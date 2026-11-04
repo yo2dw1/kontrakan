@@ -82,6 +82,12 @@
     <p><button class="btn sec" id="btnAng">Simpan Anggaran</button></p>
   </div>
   <div class="card"><b>Per bulan</b><div class="scroll"><table id="tblBln"></table></div></div>
+  <div class="card">
+    <b>Ekspor PDF</b>
+    <p class="muted">Laporan rekap untuk disimpan, dicetak, atau dikirim (misalnya ke pemilik atau keluarga).</p>
+    <label style="display:flex;gap:8px;align-items:center;font-size:15px;color:#202124"><input type="checkbox" id="pdfRinci" checked style="width:auto"> Sertakan rincian material &amp; upah</label>
+    <p class="row"><button class="btn" id="btnPdf">Buat PDF Rekap</button> <span id="pdfMsg"></span></p>
+  </div>
 </section>
 
 <!-- NOTA -->
@@ -235,7 +241,7 @@ const optKat = sel => SET.kategori.concat(sel && SET.kategori.indexOf(sel) < 0 ?
   .map(k => `<option${k === sel ? ' selected' : ''}>${esc(k)}</option>`).join('');
 
 /* ---------- Rekap ---------- */
-async function rekap() {
+async function dataRekap() {
   const [items, upah] = await Promise.all([DB.all('item'), DB.all('upah')]);
   const per = {}, bln = {};
   const p = k => { if (!per[k]) per[k] = { m: 0, u: 0 }; };
@@ -246,6 +252,10 @@ async function rekap() {
   upah.forEach(u => { p(u.kategori); per[u.kategori].u += u.total; tu += u.total; const k = String(u.tanggal).slice(0, 7); b(k); bln[k].u += u.total; });
   const tot = tm + tu;
   const ta = Object.keys(per).reduce((a, k) => a + (Number(SET.anggaran[k]) || 0), 0);
+  return { items, upah, per, bln, tm, tu, tot, ta };
+}
+async function rekap() {
+  const { per, bln, tm, tu, tot, ta } = await dataRekap();
   $('tM').textContent = rp(tm); $('tU').textContent = rp(tu); $('tT').textContent = rp(tot); $('tS').textContent = ta ? rp(ta - tot) : '-';
   let h = '<tr><th>Kategori</th><th class="r">Anggaran</th><th class="r">Material</th><th class="r">Upah</th><th class="r">Terpakai</th><th class="r">Sisa</th><th>Progres</th></tr>';
   Object.keys(per).forEach(k => {
@@ -261,10 +271,11 @@ async function rekap() {
     (bs.length ? bs.map(k => `<tr><td>${esc(k)}</td><td class="r">${rp(bln[k].m)}</td><td class="r">${rp(bln[k].u)}</td><td class="r"><b>${rp(bln[k].m + bln[k].u)}</b></td></tr>`).join('')
       : '<tr><td colspan="4" class="muted">Belum ada data.</td></tr>');
 }
-$('btnAng').onclick = async () => {
+async function simpanAng() {
   document.querySelectorAll('.ang').forEach(i => { SET.anggaran[i.dataset.k] = parseFloat(i.value) || 0; });
-  await saveSet(); rekap();
-};
+  await saveSet();
+}
+$('btnAng').onclick = async () => { await simpanAng(); rekap(); };
 
 /* ---------- AI: baca nota ---------- */
 function num(v) {
@@ -551,8 +562,8 @@ $('btnEkspor').onclick = async () => {
     const data = { versi: 1, tanggal: new Date().toISOString(), nota: await DB.all('nota'), item: await DB.all('item'), upah: await DB.all('upah'),
       file: await Promise.all(files.map(async f => ({ id: f.id, mime: f.mime, name: f.name, data: await b64(f.blob) }))),
       pengaturan: { kategori: SET.kategori, anggaran: SET.anggaran } };
-    await bagikan(new Blob([JSON.stringify(data)], { type: 'application/json' }), 'cadangan-kontrakan-' + hariIni() + '.json');
-    $('bMsg').innerHTML = '<div class="msg ok">Cadangan siap. Simpan ke iCloud Drive / Files.</div>';
+    $('bMsg').innerHTML = '';
+    dialogFile(new Blob([JSON.stringify(data)], { type: 'application/json' }), 'cadangan-kontrakan-' + hariIni() + '.json', 'Cadangan siap');
   } catch (e) { $('bMsg').innerHTML = `<div class="msg bad">${esc(e.message)}</div>`; }
 };
 const csvCell = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
@@ -561,13 +572,13 @@ $('btnCsvM').onclick = async () => {
   const it = (await DB.all('item')).sort(urut), notas = {}; (await DB.all('nota')).forEach(n => { notas[n.id] = n; });
   const rows = [['Tanggal','Toko','No Nota','Barang','Jumlah','Satuan','Harga Satuan','Subtotal','Kategori']].concat(
     it.map(i => { const n = notas[i.notaId] || {}; return [i.tanggal, n.toko, n.noNota, i.nama, i.jumlah, i.satuan, i.harga, i.jumlah * i.harga, i.kategori]; }));
-  bagikan(new Blob([csv(rows)], { type: 'text/csv' }), 'material-kontrakan.csv');
+  dialogFile(new Blob([csv(rows)], { type: 'text/csv' }), 'material-kontrakan.csv', 'Ekspor material siap');
 };
 $('btnCsvU').onclick = async () => {
   const u = (await DB.all('upah')).sort(urut);
   const rows = [['Tanggal','Tukang','Pekerjaan','Qty','Tarif','Total','Kategori','Catatan']].concat(
     u.map(x => [x.tanggal, x.nama, x.pekerjaan, x.qty, x.tarif, x.total, x.kategori, x.catatan]));
-  bagikan(new Blob([csv(rows)], { type: 'text/csv' }), 'upah-kontrakan.csv');
+  dialogFile(new Blob([csv(rows)], { type: 'text/csv' }), 'upah-kontrakan.csv', 'Ekspor upah siap');
 };
 $('fImpor').onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
@@ -586,6 +597,155 @@ $('fImpor').onchange = async e => {
     $('bMsg').innerHTML = '<div class="msg ok">Data berhasil dipulihkan ✓</div>'; isiSet(); $('uKat').innerHTML = optKat();
   } catch (err) { $('bMsg').innerHTML = `<div class="msg bad">${esc(err.message)}</div>`; }
   e.target.value = '';
+};
+
+/* ---------- Dialog berkas siap (Bagikan / Simpan) ---------- */
+function dialogFile(blob, nama, judul) {
+  if (modalUrl) URL.revokeObjectURL(modalUrl);
+  modalUrl = URL.createObjectURL(blob);
+  const pdf = blob.type === 'application/pdf';
+  $('mBody').innerHTML = `<div class="card" style="max-width:440px;margin:40px auto;text-align:left">
+    <b>${esc(judul)}</b><p class="muted">${esc(nama)} · ${Math.max(1, Math.round(blob.size / 1024))} KB</p>
+    <div class="row"><button class="btn" id="dBagi">Bagikan / Simpan ke Files</button>${pdf ? '<button class="btn sec" id="dBuka">Buka</button>' : ''}</div>
+    <p class="muted">Di menu yang muncul pilih "Simpan ke Berkas" (Save to Files), AirDrop, WhatsApp, atau Cetak.</p></div>`;
+  $('dBagi').onclick = () => bagikan(blob, nama);
+  if (pdf) $('dBuka').onclick = () => window.open(modalUrl, '_blank');
+  $('modal').classList.add('on');
+}
+
+/* ---------- Pembuat PDF (tanpa library, tetap jalan offline) ---------- */
+function PdfDoc() {
+  const W = 595.28, H = 841.89, M = 40, pages = [];
+  let ops = null, y = 0;
+  const mc = document.createElement('canvas').getContext('2d');
+  const clean = s => {
+    let o = '';
+    for (const ch of String(s == null ? '' : s)) {
+      const c = ch.codePointAt(0);
+      o += (c >= 32 && c < 127) || (c >= 160 && c <= 255) ? ch : (c === 0x2013 || c === 0x2014 ? '-' : c === 0x2019 ? "'" : '?');
+    }
+    return o;
+  };
+  const tw = (s, sz, b) => { mc.font = (b ? 'bold ' : '') + sz + 'px Helvetica, Arial, sans-serif'; return mc.measureText(clean(s)).width; };
+  const pe = s => clean(s).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+  const f = n => n.toFixed(2);
+  const fit = (s, w, sz, b) => {
+    s = clean(s); if (tw(s, sz, b) <= w) return s;
+    while (s.length > 1 && tw(s + '...', sz, b) > w) s = s.slice(0, -1);
+    return s + '...';
+  };
+  const d = {
+    newPage() { ops = []; pages.push(ops); y = M; },
+    ensure(h) { if (y + h > H - M - 14) { d.newPage(); return true; } return false; },
+    text(s, x, yy, sz, b, col) { ops.push(`BT /F${b ? 2 : 1} ${sz} Tf ${(col || [0, 0, 0]).join(' ')} rg ${f(x)} ${f(H - yy)} Td (${pe(s)}) Tj ET`); },
+    rect(x, yy, w, h, col) { ops.push(`${col.join(' ')} rg ${f(x)} ${f(H - yy - h)} ${f(w)} ${f(h)} re f`); },
+    line(x1, y1, x2, y2, col, wd) { ops.push(`${wd} w ${col.join(' ')} RG ${f(x1)} ${f(H - y1)} m ${f(x2)} ${f(H - y2)} l S`); },
+    title(s) { d.text(s, M, y + 16, 16, true); y += 26; },
+    sub(s) { d.text(s, M, y + 10, 9, false, [0.4, 0.4, 0.4]); y += 22; },
+    heading(s) { if (d.ensure(60)) { /* halaman baru */ } y += 8; d.text(s, M, y + 12, 12, true); y += 22; },
+    kv(rows) {
+      rows.forEach(r => { d.ensure(16); d.text(r[0], M, y + 11, 10, false); d.text(r[1], M + 140, y + 11, 10, true); y += 15; });
+      y += 6;
+    },
+    table(cols, rows) {
+      const sz = 8.5, rh = 16, tot = cols.reduce((a, c) => a + c.w, 0);
+      const cell = (s, x, w, b, right) => {
+        const t = fit(s, w - 8, sz, b);
+        d.text(t, right ? x + w - 4 - tw(t, sz, b) : x + 4, y + 11, sz, b);
+      };
+      const header = () => {
+        d.rect(M, y, tot, rh, [0.91, 0.94, 0.99]);
+        let x = M; cols.forEach(c => { cell(c.h, x, c.w, true, c.r); x += c.w; }); y += rh;
+      };
+      d.ensure(rh * 2); header();
+      rows.forEach(r => {
+        const cells = Array.isArray(r) ? r : r.c, bold = !Array.isArray(r) && r.b;
+        if (d.ensure(rh)) header();
+        if (bold) d.rect(M, y, tot, rh, [0.96, 0.96, 0.96]);
+        let x = M; cells.forEach((s, i) => { cell(s, x, cols[i].w, bold, cols[i].r); x += cols[i].w; });
+        d.line(M, y + rh, M + tot, y + rh, [0.85, 0.85, 0.85], 0.5); y += rh;
+      });
+      y += 6;
+    },
+    build() {
+      const n = pages.length;
+      pages.forEach((p, i) => {
+        ops = p; const t = 'Halaman ' + (i + 1) + ' dari ' + n;
+        d.text('Biaya Kontrakan', M, H - 22, 8, false, [0.5, 0.5, 0.5]);
+        d.text(t, W - M - tw(t, 8, false), H - 22, 8, false, [0.5, 0.5, 0.5]);
+      });
+      const objs = {}, kids = [];
+      objs[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+      objs[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+      objs[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+      pages.forEach((p, i) => {
+        const pid = 5 + 2 * i, cid = 6 + 2 * i, stream = p.join('\n');
+        kids.push(pid + ' 0 R');
+        objs[pid] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${cid} 0 R >>`;
+        objs[cid] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
+      });
+      objs[2] = `<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${n} >>`;
+      const total = 4 + 2 * n; let out = '%PDF-1.4\n'; const off = [];
+      for (let id = 1; id <= total; id++) { off[id] = out.length; out += `${id} 0 obj\n${objs[id]}\nendobj\n`; }
+      const xr = out.length;
+      out += `xref\n0 ${total + 1}\n0000000000 65535 f \n` + off.slice(1).map(o => String(o).padStart(10, '0') + ' 00000 n \n').join('');
+      out += `trailer\n<< /Size ${total + 1} /Root 1 0 R >>\nstartxref\n${xr}\n%%EOF`;
+      const u = new Uint8Array(out.length); for (let i = 0; i < out.length; i++) u[i] = out.charCodeAt(i) & 255;
+      return new Blob([u], { type: 'application/pdf' });
+    }
+  };
+  return d;
+}
+
+async function rekapPDF(rinci) {
+  const R = await dataRekap(), notas = {};
+  (await DB.all('nota')).forEach(n => { notas[n.id] = n; });
+  const n = x => Math.round(Number(x) || 0).toLocaleString('id-ID');
+  const q = x => String(Math.round((Number(x) || 0) * 100) / 100).replace('.', ',');
+  const tgl = t => /^\d{4}-\d{2}-\d{2}$/.test(t) ? t.slice(8) + '-' + t.slice(5, 7) + '-' + t.slice(0, 4) : (t || '-');
+  const bulan = k => /^\d{4}-\d{2}$/.test(k) ? new Date(+k.slice(0, 4), +k.slice(5) - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) : '-';
+  const doc = PdfDoc(); doc.newPage();
+  doc.title('Rekap Biaya Pembangunan Rumah Kontrakan');
+  doc.sub('Dicetak ' + new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + '  |  Semua angka dalam Rupiah');
+  doc.kv([['Total material', rp(R.tm)], ['Total upah', rp(R.tu)], ['Total pengeluaran', rp(R.tot)],
+    ['Total anggaran', R.ta ? rp(R.ta) : '-'], ['Sisa anggaran', R.ta ? rp(R.ta - R.tot) : '-']]);
+  doc.heading('Rekap per kategori');
+  const rows = Object.keys(R.per).map(k => {
+    const a = Number(SET.anggaran[k]) || 0, t = R.per[k].m + R.per[k].u;
+    return [k, a ? n(a) : '-', n(R.per[k].m), n(R.per[k].u), n(t), a ? n(a - t) : '-', a ? Math.round(t / a * 100) + '%' : '-'];
+  });
+  rows.push({ b: true, c: ['TOTAL', R.ta ? n(R.ta) : '-', n(R.tm), n(R.tu), n(R.tot), R.ta ? n(R.ta - R.tot) : '-', R.ta ? Math.round(R.tot / R.ta * 100) + '%' : '-'] });
+  doc.table([{ h: 'Kategori', w: 135 }, { h: 'Anggaran', w: 62, r: 1 }, { h: 'Material', w: 68, r: 1 }, { h: 'Upah', w: 62, r: 1 },
+    { h: 'Terpakai', w: 68, r: 1 }, { h: 'Sisa', w: 70, r: 1 }, { h: '%', w: 50, r: 1 }], rows);
+  doc.heading('Rekap per bulan');
+  const bs = Object.keys(R.bln).sort();
+  doc.table([{ h: 'Bulan', w: 150 }, { h: 'Material', w: 120, r: 1 }, { h: 'Upah', w: 120, r: 1 }, { h: 'Total', w: 125, r: 1 }],
+    bs.length ? bs.map(k => [bulan(k), n(R.bln[k].m), n(R.bln[k].u), n(R.bln[k].m + R.bln[k].u)]) : [['Belum ada data', '', '', '']]);
+  if (rinci) {
+    const asc = (a, b) => String(a.tanggal).localeCompare(String(b.tanggal));
+    doc.heading('Rincian material');
+    const im = R.items.slice().sort(asc);
+    doc.table([{ h: 'Tanggal', w: 58 }, { h: 'Toko', w: 66 }, { h: 'Barang', w: 113 }, { h: 'Jumlah', w: 50, r: 1 }, { h: 'Harga', w: 60, r: 1 },
+      { h: 'Subtotal', w: 65, r: 1 }, { h: 'Kategori', w: 105 }],
+    im.length ? im.map(i => [tgl(i.tanggal), (notas[i.notaId] || {}).toko || '', i.nama, q(i.jumlah) + ' ' + (i.satuan || ''), n(i.harga), n(i.jumlah * i.harga), i.kategori])
+      : [['Belum ada data', '', '', '', '', '', '']]);
+    doc.heading('Rincian upah tukang');
+    const iu = R.upah.slice().sort(asc);
+    doc.table([{ h: 'Tanggal', w: 58 }, { h: 'Tukang', w: 85 }, { h: 'Pekerjaan', w: 114 }, { h: 'Qty', w: 35, r: 1 }, { h: 'Tarif', w: 65, r: 1 },
+      { h: 'Total', w: 68, r: 1 }, { h: 'Kategori', w: 90 }],
+    iu.length ? iu.map(u => [tgl(u.tanggal), u.nama, u.pekerjaan, q(u.qty), n(u.tarif), n(u.total), u.kategori]) : [['Belum ada data', '', '', '', '', '', '']]);
+  }
+  return doc.build();
+}
+$('btnPdf').onclick = async () => {
+  $('btnPdf').disabled = true; $('pdfMsg').textContent = 'Menyusun PDF…';
+  try {
+    await simpanAng();
+    const blob = await rekapPDF($('pdfRinci').checked);
+    $('pdfMsg').textContent = '';
+    dialogFile(blob, 'rekap-kontrakan-' + hariIni() + '.pdf', 'Rekap PDF siap');
+  } catch (e) { $('pdfMsg').innerHTML = `<span style="color:var(--bad)">${esc(e.message)}</span>`; }
+  $('btnPdf').disabled = false;
 };
 
 /* ---------- Mulai ---------- */
