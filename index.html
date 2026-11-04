@@ -58,7 +58,7 @@
 </style>
 </head>
 <body>
-<header>🏠 Biaya Kontrakan</header>
+<header>🏠 Biaya Kontrakan <span style="font-weight:400;font-size:12px;opacity:.8">versi 4</span></header>
 <nav id="nav">
   <button data-t="rekap" class="on">Rekap</button>
   <button data-t="nota">Nota</button>
@@ -97,6 +97,20 @@
     <p class="muted">Ambil foto langsung dengan kamera, pilih dari Foto, atau pilih PDF. Hasil bacaan AI muncul di bawah untuk Anda periksa.</p>
     <input type="file" id="file" accept="image/*,application/pdf">
     <div class="row" style="margin-top:10px"><button class="btn sec" id="btnManual">Isi manual tanpa foto</button></div>
+    <details style="margin-top:14px">
+      <summary style="cursor:pointer;color:var(--b);font-weight:600">Cara gratis tanpa kunci API: minta AI di aplikasi chat membaca nota</summary>
+      <ol class="muted" style="line-height:1.7;padding-left:20px">
+        <li>Tekan <b>Salin perintah</b> di bawah.</li>
+        <li>Buka aplikasi Claude / Gemini / ChatGPT, lampirkan foto nota, tempel perintah, lalu kirim.</li>
+        <li>Salin seluruh jawaban AI, kembali ke sini, tempel di kotak, lalu tekan <b>Isi formulir</b>.</li>
+      </ol>
+      <div class="row"><button class="btn sec" id="btnSalin">Salin perintah</button></div>
+      <textarea id="promptBox" readonly style="min-height:80px;margin-top:8px"></textarea>
+      <label style="margin-top:12px">Tempel jawaban AI di sini</label>
+      <textarea id="pasteAI" style="min-height:100px" placeholder='{"tanggal": "...", "toko": "...", "items": [...]}'></textarea>
+      <div class="row" style="margin-top:8px"><button class="btn" id="btnImpor2">Isi formulir</button><button class="btn sec" id="btnTempel">Tempel dari clipboard</button></div>
+      <div id="pasteMsg"></div>
+    </details>
     <div id="aiInfo"></div>
     <div id="status"></div>
     <img id="preview" alt="Foto nota">
@@ -159,7 +173,12 @@
         <select id="sProv"><option value="">(belum diatur)</option><option value="GEMINI">Google Gemini</option><option value="CLAUDE">Anthropic Claude</option></select></div>
       <div><label>Kunci API Gemini</label><input type="password" id="sGem" autocomplete="off"></div>
       <div><label>Kunci API Claude</label><input type="password" id="sCla" autocomplete="off"></div>
+      <div><label>Nama model Gemini</label><input id="sGM" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <div><label>Nama model Claude</label><input id="sCM" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
     </div>
+    <p class="muted">Google/Anthropic kadang mengganti nama model. Jika muncul error "model tidak tersedia", ganti nama model di sini tanpa perlu memperbarui aplikasi.</p>
+    <p class="row"><button class="btn sec" id="btnTes">Simpan &amp; tes koneksi</button></p>
+    <div id="tesMsg"></div>
   </div>
   <div class="card">
     <b>Kategori pekerjaan</b>
@@ -192,7 +211,7 @@ const rp = n => 'Rp ' + Math.round(Number(n) || 0).toLocaleString('id-ID');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const hariIni = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-const MODEL = { GEMINI: 'gemini-2.5-flash', CLAUDE: 'claude-sonnet-5-5' };
+const MODEL = { GEMINI: 'gemini-3.6-flash', CLAUDE: 'claude-sonnet-5-5' }; // bisa diganti di tab Pengaturan
 const KAT_DEF = ['Persiapan & Lahan','Pondasi','Dinding & Plester','Lantai & Keramik','Atap','Pintu & Jendela','Listrik','Plumbing & Sanitasi','Cat & Finishing','Lain-lain'];
 let SET = { provider: '', geminiKey: '', claudeKey: '', kategori: KAT_DEF.slice(), anggaran: {} };
 let cur = {}, rwMode = 'nota', uEdit = null, previewUrl = null, modalUrl = null;
@@ -300,43 +319,79 @@ function normalisasi(teks) {
     })
   };
 }
-async function panggilAI(base64, mime) {
+function pesanGalat(prov, status, body) {
+  const t = String(body || ''); let m = '';
+  if (status === 400 && /API key/i.test(t)) m = 'Kunci API tidak valid. Salin ulang kunci tanpa spasi.';
+  else if (status === 401 || status === 403) m = 'Kunci API ditolak atau belum punya izin.';
+  else if (status === 404) m = 'Nama model tidak tersedia (mungkin sudah dihentikan). Ganti nama model di tab Pengaturan.';
+  else if (status === 429) m = 'Batas pemakaian/kuota tercapai. Tunggu beberapa menit lalu coba lagi.';
+  else if (status >= 500) m = 'Server penyedia AI sedang sibuk. Coba lagi sebentar lagi.';
+  return prov + ' error ' + status + (m ? ' - ' + m : '') + ' [' + t.replace(/\s+/g, ' ').slice(0, 140) + ']';
+}
+async function kirimAI(prompt, base64, mime, json) {
   if (!SET.provider) throw new Error('Penyedia AI belum diatur (tab Pengaturan).');
-  const prompt =
-    'Kamu membaca foto/scan nota, kwitansi, atau struk pembelian bahan bangunan di Indonesia. Ekstrak datanya dan kembalikan HANYA JSON valid berbentuk:\n' +
-    '{"tanggal":"YYYY-MM-DD atau string kosong","toko":"","no_nota":"","total":0,"items":[{"nama":"","jumlah":0,"satuan":"","harga_satuan":0,"subtotal":0}]}\n' +
-    'Aturan: angka ditulis polos tanpa pemisah ribuan (format Indonesia: titik = ribuan, koma = desimal). Jangan mengarang data; jika tidak terbaca isi kosong atau 0. ' +
-    'Satu baris barang = satu item. "total" adalah total akhir nota. Jika tahun pada tanggal tidak ada, pakai tahun ' + new Date().getFullYear() + '.';
-  let res, teks;
   try {
     if (SET.provider === 'GEMINI') {
       if (!SET.geminiKey) throw new Error('Kunci API Gemini belum diisi (tab Pengaturan).');
-      res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + MODEL.GEMINI + ':generateContent', {
+      const parts = [{ text: prompt }];
+      if (base64) parts.push({ inline_data: { mime_type: mime, data: base64 } });
+      const model = SET.geminiModel || MODEL.GEMINI;
+      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': SET.geminiKey },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mime, data: base64 } }] }],
-          generationConfig: { responseMimeType: 'application/json', temperature: 0 } })
+        body: JSON.stringify({ contents: [{ parts }], generationConfig: json ? { responseMimeType: 'application/json', temperature: 0 } : { temperature: 0 } })
       });
-      if (!res.ok) throw new Error('Gemini error ' + res.status + ': ' + (await res.text()).slice(0, 200));
-      teks = (await res.json()).candidates[0].content.parts[0].text;
-    } else {
-      if (!SET.claudeKey) throw new Error('Kunci API Claude belum diisi (tab Pengaturan).');
-      const blok = mime === 'application/pdf'
-        ? { type: 'document', source: { type: 'base64', media_type: mime, data: base64 } }
-        : { type: 'image', source: { type: 'base64', media_type: mime, data: base64 } };
-      res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': SET.claudeKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({ model: MODEL.CLAUDE, max_tokens: 4096, messages: [{ role: 'user', content: [blok, { type: 'text', text: prompt }] }] })
-      });
-      if (!res.ok) throw new Error('Claude error ' + res.status + ': ' + (await res.text()).slice(0, 200));
-      teks = (await res.json()).content[0].text;
+      if (!res.ok) throw new Error(pesanGalat('Gemini', res.status, await res.text()));
+      const j = await res.json();
+      return j.candidates[0].content.parts.map(x => x.text || '').join('');
     }
+    if (!SET.claudeKey) throw new Error('Kunci API Claude belum diisi (tab Pengaturan).');
+    const content = [];
+    if (base64) content.push(mime === 'application/pdf'
+      ? { type: 'document', source: { type: 'base64', media_type: mime, data: base64 } }
+      : { type: 'image', source: { type: 'base64', media_type: mime, data: base64 } });
+    content.push({ type: 'text', text: prompt });
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': SET.claudeKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: SET.claudeModel || MODEL.CLAUDE, max_tokens: 4096, messages: [{ role: 'user', content }] })
+    });
+    if (!res.ok) throw new Error(pesanGalat('Claude', res.status, await res.text()));
+    return (await res.json()).content.map(x => x.text || '').join('');
   } catch (e) {
     if (e instanceof TypeError) throw new Error('Tidak bisa terhubung ke penyedia AI. Periksa koneksi internet.');
     throw e;
   }
-  return normalisasi(teks);
 }
+function promptNota(chat) {
+  return (chat ? 'Baca foto nota/kwitansi pembelian bahan bangunan yang saya lampirkan. ' : 'Kamu membaca foto/scan nota, kwitansi, atau struk pembelian bahan bangunan di Indonesia. ') +
+    'Ekstrak datanya dan kembalikan HANYA JSON valid (tanpa penjelasan lain) berbentuk:\n' +
+    '{"tanggal":"YYYY-MM-DD atau string kosong","toko":"","no_nota":"","total":0,"items":[{"nama":"","jumlah":0,"satuan":"","harga_satuan":0,"subtotal":0}]}\n' +
+    'Aturan: angka ditulis polos tanpa pemisah ribuan (format Indonesia: titik = ribuan, koma = desimal). Jangan mengarang data; jika tidak terbaca isi kosong atau 0. ' +
+    'Satu baris barang = satu item. "total" adalah total akhir nota. Jika tahun pada tanggal tidak ada, pakai tahun ' + new Date().getFullYear() + '.';
+}
+async function panggilAI(base64, mime) {
+  return normalisasi(await kirimAI(promptNota(false), base64, mime, true));
+}
+$('btnSalin').onclick = async () => {
+  const t = $('promptBox').value;
+  try { await navigator.clipboard.writeText(t); $('btnSalin').textContent = 'Tersalin ✓'; setTimeout(() => { $('btnSalin').textContent = 'Salin perintah'; }, 2000); }
+  catch (_) { $('promptBox').select(); $('promptBox').setSelectionRange(0, 99999); alert('Teks sudah terpilih. Ketuk lama pada teks lalu pilih Salin.'); }
+};
+$('btnTempel').onclick = async () => {
+  try { $('pasteAI').value = await navigator.clipboard.readText(); }
+  catch (_) { alert('Ketuk lama pada kotak lalu pilih Tempel.'); }
+};
+$('btnImpor2').onclick = () => {
+  try {
+    const d = normalisasi($('pasteAI').value);
+    bukaForm(d, '2. Periksa & koreksi isi nota');
+    $('pasteAI').value = '';
+    $('pasteMsg').innerHTML = '<div class="msg ok">Formulir terisi. Periksa isinya, lalu tekan Simpan.</div>';
+    $('formNota').scrollIntoView({ behavior: 'smooth' });
+  } catch (e) {
+    $('pasteMsg').innerHTML = `<div class="msg bad">Jawaban tidak terbaca (${esc(e.message)}). Pastikan seluruh jawaban AI ikut tersalin, dari tanda { sampai }.</div>`;
+  }
+};
 
 /* ---------- Nota: upload, verifikasi, simpan ---------- */
 const b64 = blob => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result.split(',')[1]); r.onerror = () => no(r.error); r.readAsDataURL(blob); });
@@ -533,19 +588,30 @@ $('mClose').onclick = () => { $('modal').classList.remove('on'); $('mBody').inne
 /* ---------- Pengaturan, cadangan ---------- */
 async function isiSet() {
   $('sProv').value = SET.provider || ''; $('sGem').value = SET.geminiKey || ''; $('sCla').value = SET.claudeKey || '';
+  $('sGM').value = SET.geminiModel || MODEL.GEMINI; $('sCM').value = SET.claudeModel || MODEL.CLAUDE;
   $('sKat').value = SET.kategori.join('\n');
   try { if (navigator.storage && navigator.storage.estimate) { const e = await navigator.storage.estimate(); $('storInfo').textContent = 'Penyimpanan terpakai: ' + (e.usage / 1048576).toFixed(1) + ' MB'; } } catch (_) {}
 }
-$('btnSet').onclick = async () => {
+async function simpanSetForm() {
   SET.provider = $('sProv').value; SET.geminiKey = $('sGem').value.trim(); SET.claudeKey = $('sCla').value.trim();
+  SET.geminiModel = $('sGM').value.trim(); SET.claudeModel = $('sCM').value.trim();
   const k = $('sKat').value.split('\n').map(s => s.trim()).filter(Boolean);
   SET.kategori = k.length ? k : KAT_DEF.slice();
   await saveSet(); cekAI(); $('uKat').innerHTML = optKat();
   $('sMsg').innerHTML = '<span style="color:var(--ok)">Tersimpan ✓</span>'; setTimeout(() => { $('sMsg').innerHTML = ''; }, 2500);
+}
+$('btnSet').onclick = simpanSetForm;
+$('btnTes').onclick = async () => {
+  await simpanSetForm();
+  $('tesMsg').innerHTML = '<div class="msg info">Menguji koneksi…</div>';
+  try {
+    const r = await kirimAI('Balas hanya dengan satu kata: OK', null, null, false);
+    $('tesMsg').innerHTML = `<div class="msg ok">Terhubung ✓ Jawaban AI: ${esc(r.trim().slice(0, 40))}</div>`;
+  } catch (e) { $('tesMsg').innerHTML = `<div class="msg bad">${esc(e.message)}</div>`; }
 };
 function cekAI() {
   const ok = SET.provider === 'GEMINI' ? SET.geminiKey : SET.provider === 'CLAUDE' ? SET.claudeKey : '';
-  $('aiInfo').innerHTML = ok ? '' : '<div class="msg warn">Pembaca nota (AI) belum diatur: buka tab Pengaturan. Tanpa itu, nota tetap bisa dicatat lewat "Isi manual".</div>';
+  $('aiInfo').innerHTML = ok ? '' : '<div class="msg warn">Pembaca nota otomatis belum diatur. Pilih: isi kunci API di tab Pengaturan, atau pakai "Cara gratis tanpa kunci API" di bawah, atau "Isi manual".</div>';
 }
 async function bagikan(blob, nama) {
   const f = new File([blob], nama, { type: blob.type });
@@ -752,7 +818,7 @@ $('btnPdf').onclick = async () => {
 (async function init() {
   try {
     await DB.open(); await loadSet();
-    $('uKat').innerHTML = optKat(); $('uTgl').value = hariIni(); hitungU(); cekAI(); rekap();
+    $('uKat').innerHTML = optKat(); $('uTgl').value = hariIni(); hitungU(); cekAI(); rekap(); $('promptBox').value = promptNota(true);
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
   } catch (e) { document.querySelector('main').innerHTML = `<div class="msg bad">Penyimpanan lokal tidak bisa dibuka: ${esc(e.message)}. Jangan gunakan Mode Pribadi (Private Browsing).</div>`; }
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) navigator.serviceWorker.register('sw.js').catch(() => {});
