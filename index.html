@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kontrakan">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#1a73e8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Biaya Kontrakan</title>
+<style>
+  :root { --b:#1a73e8; --bg:#f6f8fb; --line:#dfe3ea; --ok:#188038; --warn:#b06000; --bad:#c5221f; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; }
+  body { font-family:-apple-system, system-ui, "Segoe UI", Arial, sans-serif; background:var(--bg); color:#202124; font-size:15px;
+         padding-bottom:env(safe-area-inset-bottom); }
+  header { background:var(--b); color:#fff; padding:calc(12px + env(safe-area-inset-top)) 16px 12px; font-weight:600; font-size:17px; }
+  nav { display:flex; gap:2px; padding:6px 10px 0; overflow-x:auto; background:#fff; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:5; }
+  nav button { border:0; background:none; padding:12px 14px; cursor:pointer; font-size:15px; border-bottom:3px solid transparent; white-space:nowrap; color:#202124; }
+  nav button.on { border-color:var(--b); color:var(--b); font-weight:600; }
+  main { padding:14px; max-width:1000px; margin:0 auto; }
+  section { display:none; } section.on { display:block; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:14px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; }
+  label { display:block; font-size:12px; color:#5f6368; margin-bottom:3px; }
+  input, select, textarea { width:100%; padding:10px; border:1px solid var(--line); border-radius:8px; font-size:16px; background:#fff; color:#202124; font-family:inherit; }
+  textarea { min-height:140px; }
+  button.btn { background:var(--b); color:#fff; border:0; padding:12px 18px; border-radius:8px; cursor:pointer; font-size:15px; font-family:inherit; }
+  button.btn.sec { background:#fff; color:var(--b); border:1px solid var(--b); }
+  button.btn:disabled { opacity:.5; }
+  button.x { border:0; background:none; color:var(--bad); cursor:pointer; font-size:18px; padding:6px 8px; }
+  button.ln { border:0; background:none; color:var(--b); cursor:pointer; font-size:14px; padding:6px 8px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { padding:8px 6px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle; }
+  th { color:#5f6368; font-weight:600; font-size:13px; }
+  td.r, th.r { text-align:right; }
+  .scroll { overflow-x:auto; }
+  .big { font-size:21px; font-weight:700; margin-top:4px; }
+  .muted { color:#5f6368; font-size:13px; }
+  .msg { padding:10px 12px; border-radius:8px; margin:10px 0; line-height:1.4; }
+  .msg.info { background:#e8f0fe; } .msg.warn { background:#fef7e0; color:var(--warn); } .msg.bad { background:#fce8e6; color:var(--bad); } .msg.ok { background:#e6f4ea; color:var(--ok); }
+  .bar { height:8px; background:#e8eaed; border-radius:4px; overflow:hidden; min-width:80px; }
+  .bar > i { display:block; height:100%; background:var(--b); } .bar > i.over { background:var(--bad); }
+  .item { display:grid; grid-template-columns:2fr .8fr .8fr 1fr 1fr 1.4fr auto; gap:6px; align-items:end; margin-bottom:10px; padding-bottom:10px; border-bottom:1px dashed var(--line); }
+  .item .sub { padding:10px 0; font-weight:600; text-align:right; }
+  #preview { max-width:100%; max-height:380px; border:1px solid var(--line); border-radius:8px; margin-top:8px; display:none; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .sub-tabs { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+  #modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:20; padding:calc(14px + env(safe-area-inset-top)) 14px 14px; }
+  #modal.on { display:flex; flex-direction:column; }
+  #modal .top { text-align:right; } #modal .top button { background:#fff; border:0; border-radius:8px; padding:10px 16px; font-size:15px; }
+  #mBody { flex:1; overflow:auto; text-align:center; margin-top:10px; } #mBody img { max-width:100%; } #mBody iframe { width:100%; height:100%; border:0; background:#fff; }
+  @media (max-width:760px) { .item { grid-template-columns:1fr 1fr; } .item .nama, .item .kat { grid-column:1 / -1; } }
+</style>
+</head>
+<body>
+<header>🏠 Biaya Kontrakan</header>
+<nav id="nav">
+  <button data-t="rekap" class="on">Rekap</button>
+  <button data-t="nota">Nota</button>
+  <button data-t="upah">Upah</button>
+  <button data-t="riwayat">Riwayat</button>
+  <button data-t="set">Pengaturan</button>
+</nav>
+<main>
+
+<!-- REKAP -->
+<section id="rekap" class="on">
+  <div class="grid">
+    <div class="card"><div class="muted">Total Material</div><div class="big" id="tM">-</div></div>
+    <div class="card"><div class="muted">Total Upah</div><div class="big" id="tU">-</div></div>
+    <div class="card"><div class="muted">Total Pengeluaran</div><div class="big" id="tT">-</div></div>
+    <div class="card"><div class="muted">Sisa Anggaran</div><div class="big" id="tS">-</div></div>
+  </div>
+  <div class="card">
+    <b>Per kategori</b> <span class="muted">— isi kolom anggaran lalu tekan Simpan</span>
+    <div class="scroll"><table id="tblKat"></table></div>
+    <p><button class="btn sec" id="btnAng">Simpan Anggaran</button></p>
+  </div>
+  <div class="card"><b>Per bulan</b><div class="scroll"><table id="tblBln"></table></div></div>
+</section>
+
+<!-- NOTA -->
+<section id="nota">
+  <div class="card">
+    <b>1. Foto / pilih nota</b>
+    <p class="muted">Ambil foto langsung dengan kamera, pilih dari Foto, atau pilih PDF. Hasil bacaan AI muncul di bawah untuk Anda periksa.</p>
+    <input type="file" id="file" accept="image/*,application/pdf">
+    <div class="row" style="margin-top:10px"><button class="btn sec" id="btnManual">Isi manual tanpa foto</button></div>
+    <div id="aiInfo"></div>
+    <div id="status"></div>
+    <img id="preview" alt="Foto nota">
+    <div id="pdfInfo"></div>
+  </div>
+
+  <div class="card" id="formNota" style="display:none">
+    <b id="judulNota">2. Periksa &amp; koreksi isi nota</b>
+    <div class="grid" style="margin-top:10px">
+      <div><label>Tanggal</label><input type="date" id="nTgl"></div>
+      <div><label>Toko / Penjual</label><input id="nToko"></div>
+      <div><label>No. Nota</label><input id="nNo"></div>
+      <div><label>Total di nota (Rp)</label><input type="number" inputmode="decimal" id="nTotal"></div>
+    </div>
+    <h4>Daftar barang</h4>
+    <div id="items"></div>
+    <button class="btn sec" id="btnTambah">+ Tambah baris</button>
+    <div class="msg info" id="cek"></div>
+    <div><label>Catatan (opsional)</label><input id="nCatatan"></div>
+    <p class="row"><button class="btn" id="btnSimpan">Simpan</button><button class="btn sec" id="btnBatal">Batal</button></p>
+  </div>
+</section>
+
+<!-- UPAH -->
+<section id="upah">
+  <div class="card">
+    <b id="judulUpah">Catat upah tukang</b>
+    <div class="grid" style="margin-top:10px">
+      <div><label>Tanggal</label><input type="date" id="uTgl"></div>
+      <div><label>Nama tukang</label><input id="uNama"></div>
+      <div><label>Pekerjaan</label><input id="uKerja" placeholder="mis. pasang bata"></div>
+      <div><label>Jumlah hari / qty</label><input type="number" inputmode="decimal" id="uQty" value="1"></div>
+      <div><label>Tarif per hari/satuan (Rp)</label><input type="number" inputmode="decimal" id="uTarif"></div>
+      <div><label>Kategori</label><select id="uKat"></select></div>
+    </div>
+    <div style="margin-top:8px"><label>Catatan</label><input id="uCat"></div>
+    <p>Total: <b id="uTotal">Rp 0</b></p>
+    <p class="row"><button class="btn" id="btnUpah">Simpan Upah</button><button class="btn sec" id="btnUpahBatal" style="display:none">Batal edit</button></p>
+    <div id="uMsg"></div>
+  </div>
+</section>
+
+<!-- RIWAYAT -->
+<section id="riwayat">
+  <div class="sub-tabs">
+    <button class="btn sec" data-rw="nota">Nota</button>
+    <button class="btn sec" data-rw="item">Material</button>
+    <button class="btn sec" data-rw="upah">Upah</button>
+  </div>
+  <div class="card scroll" id="rwBox"></div>
+</section>
+
+<!-- PENGATURAN -->
+<section id="set">
+  <div class="card">
+    <b>Pembaca nota (AI)</b>
+    <p class="muted">Kunci API disimpan hanya di iPad ini dan dikirim langsung ke penyedia yang Anda pilih. Gunakan kunci khusus aplikasi ini. Foto nota yang dibaca dikirim ke penyedia tersebut.</p>
+    <div class="grid">
+      <div><label>Penyedia</label>
+        <select id="sProv"><option value="">(belum diatur)</option><option value="GEMINI">Google Gemini</option><option value="CLAUDE">Anthropic Claude</option></select></div>
+      <div><label>Kunci API Gemini</label><input type="password" id="sGem" autocomplete="off"></div>
+      <div><label>Kunci API Claude</label><input type="password" id="sCla" autocomplete="off"></div>
+    </div>
+  </div>
+  <div class="card">
+    <b>Kategori pekerjaan</b>
+    <p class="muted">Satu kategori per baris. Mengubah nama tidak mengubah data lama.</p>
+    <textarea id="sKat"></textarea>
+    <p><button class="btn" id="btnSet">Simpan Pengaturan</button> <span id="sMsg"></span></p>
+  </div>
+  <div class="card">
+    <b>Cadangan data</b>
+    <div class="msg warn">Data hanya ada di iPad ini. Buat cadangan secara berkala (misal seminggu sekali) dan simpan ke iCloud Drive / Files. Jika data Safari terhapus atau iPad diganti, cadangan inilah yang menyelamatkan data Anda.</div>
+    <div class="row">
+      <button class="btn" id="btnEkspor">Cadangkan semua (JSON + foto)</button>
+      <button class="btn sec" id="btnCsvM">Ekspor Material (CSV)</button>
+      <button class="btn sec" id="btnCsvU">Ekspor Upah (CSV)</button>
+    </div>
+    <p><label>Pulihkan dari cadangan (JSON)</label><input type="file" id="fImpor" accept=".json,application/json"></p>
+    <div id="bMsg"></div>
+    <p class="muted" id="storInfo"></p>
+  </div>
+</section>
+
+</main>
+
+<div id="modal"><div class="top"><button id="mClose">Tutup</button></div><div id="mBody"></div></div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const rp = n => 'Rp ' + Math.round(Number(n) || 0).toLocaleString('id-ID');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const hariIni = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const MODEL = { GEMINI: 'gemini-2.5-flash', CLAUDE: 'claude-sonnet-5-5' };
+const KAT_DEF = ['Persiapan & Lahan','Pondasi','Dinding & Plester','Lantai & Keramik','Atap','Pintu & Jendela','Listrik','Plumbing & Sanitasi','Cat & Finishing','Lain-lain'];
+let SET = { provider: '', geminiKey: '', claudeKey: '', kategori: KAT_DEF.slice(), anggaran: {} };
+let cur = {}, rwMode = 'nota', uEdit = null, previewUrl = null, modalUrl = null;
+
+/* ---------- Database lokal (IndexedDB) ---------- */
+const rq = r => new Promise((ok, no) => { r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); });
+const DB = {
+  db: null,
+  async open() {
+    this.db = await new Promise((ok, no) => {
+      const r = indexedDB.open('kontrakan', 1);
+      r.onupgradeneeded = () => { ['nota','item','upah','file','kv'].forEach(s => r.result.createObjectStore(s, { keyPath: s === 'kv' ? 'k' : 'id' })); };
+      r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error);
+    });
+  },
+  store(s, m) { return this.db.transaction(s, m || 'readonly').objectStore(s); },
+  all(s) { return rq(this.store(s).getAll()); },
+  get(s, k) { return rq(this.store(s).get(k)); },
+  put(s, v) { return rq(this.store(s, 'readwrite').put(v)); },
+  multi(names, fn) {
+    return new Promise((ok, no) => {
+      const tx = this.db.transaction(names, 'readwrite');
+      fn(...names.map(n => tx.objectStore(n)));
+      tx.oncomplete = () => ok(); tx.onerror = () => no(tx.error); tx.onabort = () => no(tx.error);
+    });
+  }
+};
+async function loadSet() {
+  const s = await DB.get('kv', 'settings');
+  if (s) SET = Object.assign(SET, s.v);
+  if (!SET.kategori || !SET.kategori.length) SET.kategori = KAT_DEF.slice();
+}
+const saveSet = () => DB.put('kv', { k: 'settings', v: SET });
+
+/* ---------- Navigasi ---------- */
+function tab(t) {
+  document.querySelectorAll('#nav button').forEach(x => x.classList.toggle('on', x.dataset.t === t));
+  document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === t));
+  if (t === 'rekap') rekap(); if (t === 'riwayat') riwayat(); if (t === 'set') isiSet();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('#nav button').forEach(b => b.onclick = () => tab(b.dataset.t));
+document.querySelectorAll('[data-rw]').forEach(b => b.onclick = () => { rwMode = b.dataset.rw; riwayat(); });
+
+const optKat = sel => SET.kategori.concat(sel && SET.kategori.indexOf(sel) < 0 ? [sel] : [])
+  .map(k => `<option${k === sel ? ' selected' : ''}>${esc(k)}</option>`).join('');
+
+/* ---------- Rekap ---------- */
+async function rekap() {
+  const [items, upah] = await Promise.all([DB.all('item'), DB.all('upah')]);
+  const per = {}, bln = {};
+  const p = k => { if (!per[k]) per[k] = { m: 0, u: 0 }; };
+  const b = k => { if (!bln[k]) bln[k] = { m: 0, u: 0 }; };
+  SET.kategori.forEach(p);
+  let tm = 0, tu = 0;
+  items.forEach(i => { const s = i.jumlah * i.harga; p(i.kategori); per[i.kategori].m += s; tm += s; const k = String(i.tanggal).slice(0, 7); b(k); bln[k].m += s; });
+  upah.forEach(u => { p(u.kategori); per[u.kategori].u += u.total; tu += u.total; const k = String(u.tanggal).slice(0, 7); b(k); bln[k].u += u.total; });
+  const tot = tm + tu;
+  const ta = Object.keys(per).reduce((a, k) => a + (Number(SET.anggaran[k]) || 0), 0);
+  $('tM').textContent = rp(tm); $('tU').textContent = rp(tu); $('tT').textContent = rp(tot); $('tS').textContent = ta ? rp(ta - tot) : '-';
+  let h = '<tr><th>Kategori</th><th class="r">Anggaran</th><th class="r">Material</th><th class="r">Upah</th><th class="r">Terpakai</th><th class="r">Sisa</th><th>Progres</th></tr>';
+  Object.keys(per).forEach(k => {
+    const a = Number(SET.anggaran[k]) || 0, t = per[k].m + per[k].u, pct = a ? t / a * 100 : 0;
+    h += `<tr><td>${esc(k)}</td><td class="r"><input type="number" inputmode="decimal" class="ang" data-k="${esc(k)}" value="${a || ''}" style="width:130px;text-align:right"></td>
+      <td class="r">${rp(per[k].m)}</td><td class="r">${rp(per[k].u)}</td><td class="r"><b>${rp(t)}</b></td>
+      <td class="r" style="color:${a && t > a ? 'var(--bad)' : 'inherit'}">${a ? rp(a - t) : '-'}</td>
+      <td><div class="bar"><i class="${pct > 100 ? 'over' : ''}" style="width:${Math.min(pct, 100)}%"></i></div></td></tr>`;
+  });
+  $('tblKat').innerHTML = h;
+  const bs = Object.keys(bln).sort();
+  $('tblBln').innerHTML = '<tr><th>Bulan</th><th class="r">Material</th><th class="r">Upah</th><th class="r">Total</th></tr>' +
+    (bs.length ? bs.map(k => `<tr><td>${esc(k)}</td><td class="r">${rp(bln[k].m)}</td><td class="r">${rp(bln[k].u)}</td><td class="r"><b>${rp(bln[k].m + bln[k].u)}</b></td></tr>`).join('')
+      : '<tr><td colspan="4" class="muted">Belum ada data.</td></tr>');
+}
+$('btnAng').onclick = async () => {
+  document.querySelectorAll('.ang').forEach(i => { SET.anggaran[i.dataset.k] = parseFloat(i.value) || 0; });
+  await saveSet(); rekap();
+};
+
+/* ---------- AI: baca nota ---------- */
+function num(v) {
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  let s = String(v == null ? '' : v).replace(/[^\d.,-]/g, '');
+  if (!s) return 0;
+  if (s.indexOf(',') > -1 && s.indexOf('.') > -1) s = s.replace(/\./g, '').replace(',', '.');
+  else if (s.indexOf(',') > -1) s = /,\d{1,2}$/.test(s) ? s.replace(',', '.') : s.replace(/,/g, '');
+  else if (/\.\d{3}(\.|$)/.test(s)) s = s.replace(/\./g, '');
+  const n = parseFloat(s); return isFinite(n) ? n : 0;
+}
+function normalisasi(teks) {
+  const t = String(teks).replace(/```json|```/g, '');
+  const a = t.indexOf('{'), z = t.lastIndexOf('}');
+  if (a < 0 || z < 0) throw new Error('Jawaban AI tidak berbentuk JSON.');
+  const o = JSON.parse(t.slice(a, z + 1));
+  return {
+    tanggal: o.tanggal || '', toko: o.toko || '', noNota: o.no_nota || '', total: num(o.total),
+    items: (o.items || []).map(i => {
+      const jml = num(i.jumlah) || 1, harga = num(i.harga_satuan), sub = num(i.subtotal);
+      return { nama: i.nama || '', jumlah: jml, satuan: i.satuan || '', harga: harga || (sub && jml ? sub / jml : 0) };
+    })
+  };
+}
+async function panggilAI(base64, mime) {
+  if (!SET.provider) throw new Error('Penyedia AI belum diatur (tab Pengaturan).');
+  const prompt =
+    'Kamu membaca foto/scan nota, kwitansi, atau struk pembelian bahan bangunan di Indonesia. Ekstrak datanya dan kembalikan HANYA JSON valid berbentuk:\n' +
+    '{"tanggal":"YYYY-MM-DD atau string kosong","toko":"","no_nota":"","total":0,"items":[{"nama":"","jumlah":0,"satuan":"","harga_satuan":0,"subtotal":0}]}\n' +
+    'Aturan: angka ditulis polos tanpa pemisah ribuan (format Indonesia: titik = ribuan, koma = desimal). Jangan mengarang data; jika tidak terbaca isi kosong atau 0. ' +
+    'Satu baris barang = satu item. "total" adalah total akhir nota. Jika tahun pada tanggal tidak ada, pakai tahun ' + new Date().getFullYear() + '.';
+  let res, teks;
+  try {
+    if (SET.provider === 'GEMINI') {
+      if (!SET.geminiKey) throw new Error('Kunci API Gemini belum diisi (tab Pengaturan).');
+      res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + MODEL.GEMINI + ':generateContent', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': SET.geminiKey },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mime, data: base64 } }] }],
+          generationConfig: { responseMimeType: 'application/json', temperature: 0 } })
+      });
+      if (!res.ok) throw new Error('Gemini error ' + res.status + ': ' + (await res.text()).slice(0, 200));
+      teks = (await res.json()).candidates[0].content.parts[0].text;
+    } else {
+      if (!SET.claudeKey) throw new Error('Kunci API Claude belum diisi (tab Pengaturan).');
+      const blok = mime === 'application/pdf'
+        ? { type: 'document', source: { type: 'base64', media_type: mime, data: base64 } }
+        : { type: 'image', source: { type: 'base64', media_type: mime, data: base64 } };
+      res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': SET.claudeKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: MODEL.CLAUDE, max_tokens: 4096, messages: [{ role: 'user', content: [blok, { type: 'text', text: prompt }] }] })
+      });
+      if (!res.ok) throw new Error('Claude error ' + res.status + ': ' + (await res.text()).slice(0, 200));
+      teks = (await res.json()).content[0].text;
+    }
+  } catch (e) {
+    if (e instanceof TypeError) throw new Error('Tidak bisa terhubung ke penyedia AI. Periksa koneksi internet.');
+    throw e;
+  }
+  return normalisasi(teks);
+}
+
+/* ---------- Nota: upload, verifikasi, simpan ---------- */
+const b64 = blob => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result.split(',')[1]); r.onerror = () => no(r.error); r.readAsDataURL(blob); });
+async function siapkan(f) {
+  if (f.type === 'application/pdf') return { blob: f, mime: f.type, base64: await b64(f) };
+  const url = URL.createObjectURL(f);
+  const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error('File bukan gambar yang bisa dibaca.')); i.src = url; });
+  const s = Math.min(1, 1800 / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+  const blob = await new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.85));
+  return { blob, mime: 'image/jpeg', base64: await b64(blob) };
+}
+function tampilBukti(blob, mime) {
+  if (previewUrl) URL.revokeObjectURL(previewUrl);
+  previewUrl = blob ? URL.createObjectURL(blob) : null;
+  const img = $('preview');
+  if (blob && mime !== 'application/pdf') { img.src = previewUrl; img.style.display = 'block'; $('pdfInfo').innerHTML = ''; }
+  else { img.style.display = 'none'; $('pdfInfo').innerHTML = blob ? `<p><a href="${previewUrl}" target="_blank">Buka PDF</a></p>` : ''; }
+}
+function bukaForm(d, judul) {
+  $('judulNota').textContent = judul;
+  $('nTgl').value = d.tanggal || hariIni(); $('nToko').value = d.toko || ''; $('nNo').value = d.noNota || '';
+  $('nTotal').value = d.total || ''; $('nCatatan').value = d.catatan || '';
+  $('items').innerHTML = ''; (d.items && d.items.length ? d.items : [{}]).forEach(i => tambahBaris(i));
+  $('formNota').style.display = 'block'; hitung();
+}
+$('file').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  cur = {}; $('formNota').style.display = 'none';
+  $('status').innerHTML = '<div class="msg info">Memproses dan membaca nota… (±5–20 detik)</div>';
+  try {
+    const p = await siapkan(f);
+    cur = { fileId: uid('f'), blob: p.blob, mime: p.mime, name: f.name, baru: true };
+    tampilBukti(p.blob, p.mime);
+    let d = { items: [] };
+    try {
+      d = await panggilAI(p.base64, p.mime);
+      $('status').innerHTML = '<div class="msg ok">Selesai dibaca. Bandingkan tiap kolom dengan foto nota sebelum menyimpan.</div>';
+    } catch (err) {
+      $('status').innerHTML = `<div class="msg warn">AI gagal membaca: ${esc(err.message)}<br>Foto tetap dipakai sebagai bukti; isi manual di bawah.</div>`;
+    }
+    bukaForm(d, '2. Periksa & koreksi isi nota');
+  } catch (err) { $('status').innerHTML = `<div class="msg bad">${esc(err.message)}</div>`; }
+  e.target.value = '';
+};
+$('btnManual').onclick = () => { cur = {}; tampilBukti(null); $('status').innerHTML = ''; bukaForm({}, 'Isi nota manual'); };
+$('btnBatal').onclick = () => { cur = {}; $('formNota').style.display = 'none'; tampilBukti(null); $('status').innerHTML = ''; };
+$('btnTambah').onclick = () => tambahBaris({});
+$('nTotal').oninput = hitung;
+
+function tambahBaris(it) {
+  it = it || {};
+  const d = document.createElement('div'); d.className = 'item';
+  d.innerHTML = `
+    <div class="nama"><label>Barang</label><input class="i-nama" value="${esc(it.nama || '')}"></div>
+    <div><label>Jumlah</label><input class="i-jml" type="number" inputmode="decimal" step="any" value="${it.jumlah == null ? 1 : it.jumlah}"></div>
+    <div><label>Satuan</label><input class="i-sat" value="${esc(it.satuan || '')}"></div>
+    <div><label>Harga satuan</label><input class="i-hrg" type="number" inputmode="decimal" step="any" value="${it.harga || ''}"></div>
+    <div><label>Subtotal</label><div class="sub">Rp 0</div></div>
+    <div class="kat"><label>Kategori</label><select class="i-kat">${optKat(it.kategori)}</select></div>
+    <button class="x" title="Hapus baris">✕</button>`;
+  d.querySelector('.i-jml').oninput = hitung; d.querySelector('.i-hrg').oninput = hitung;
+  d.querySelector('.x').onclick = () => { d.remove(); hitung(); };
+  $('items').appendChild(d); hitung();
+}
+function ambilItems() {
+  return [...document.querySelectorAll('#items .item')].map(r => ({
+    nama: r.querySelector('.i-nama').value.trim(), jumlah: parseFloat(r.querySelector('.i-jml').value) || 0,
+    satuan: r.querySelector('.i-sat').value.trim(), harga: parseFloat(r.querySelector('.i-hrg').value) || 0,
+    kategori: r.querySelector('.i-kat').value
+  }));
+}
+function hitung() {
+  let sum = 0;
+  document.querySelectorAll('#items .item').forEach(r => {
+    const s = (parseFloat(r.querySelector('.i-jml').value) || 0) * (parseFloat(r.querySelector('.i-hrg').value) || 0);
+    r.querySelector('.sub').textContent = rp(s); sum += s;
+  });
+  const t = parseFloat($('nTotal').value) || 0, box = $('cek');
+  if (!t) { box.className = 'msg info'; box.innerHTML = `Jumlah semua barang: <b>${rp(sum)}</b>`; }
+  else if (Math.abs(t - sum) < 1) { box.className = 'msg ok'; box.innerHTML = `✓ Jumlah barang ${rp(sum)} cocok dengan total nota.`; }
+  else { box.className = 'msg warn'; box.innerHTML = `Jumlah barang ${rp(sum)} ≠ total nota ${rp(t)} (selisih ${rp(t - sum)}). Bisa karena diskon/ongkir/PPN, atau ada yang salah terbaca — periksa lagi.`; }
+}
+$('btnSimpan').onclick = async () => {
+  const items = ambilItems().filter(i => i.nama);
+  if (!items.length) return alert('Isi minimal satu barang.');
+  const tanggal = $('nTgl').value || hariIni(), toko = $('nToko').value.trim(), noNota = $('nNo').value.trim();
+  const sum = items.reduce((a, i) => a + i.jumlah * i.harga, 0);
+  $('btnSimpan').disabled = true;
+  try {
+    if (!cur.editId && noNota) {
+      const ada = (await DB.all('nota')).some(n => n.noNota === noNota && String(n.toko).toLowerCase() === toko.toLowerCase());
+      if (ada && !confirm('Nota dengan toko & nomor yang sama sudah tercatat. Tetap simpan?')) { $('btnSimpan').disabled = false; return; }
+    }
+    const id = cur.editId || uid('n');
+    const lama = cur.editId ? (await DB.all('item')).filter(i => i.notaId === id) : [];
+    await DB.multi(['nota', 'item', 'file'], (N, I, F) => {
+      if (cur.fileId && cur.baru) F.put({ id: cur.fileId, blob: cur.blob, mime: cur.mime, name: cur.name });
+      lama.forEach(o => I.delete(o.id));
+      N.put({ id, tanggal, toko, noNota, total: parseFloat($('nTotal').value) || sum, catatan: $('nCatatan').value, fileId: cur.fileId || null });
+      items.forEach(i => I.put({ id: uid('i'), notaId: id, tanggal, nama: i.nama, jumlah: i.jumlah, satuan: i.satuan, harga: i.harga, kategori: i.kategori }));
+    });
+    cur = {}; $('formNota').style.display = 'none'; tampilBukti(null);
+    $('status').innerHTML = '<div class="msg ok">Tersimpan ✓ Silakan foto nota berikutnya.</div>';
+  } catch (e) { alert('Gagal menyimpan: ' + e.message); }
+  $('btnSimpan').disabled = false;
+};
+async function editNota(id) {
+  const n = await DB.get('nota', id); if (!n) return;
+  const items = (await DB.all('item')).filter(i => i.notaId === id);
+  const f = n.fileId ? await DB.get('file', n.fileId) : null;
+  cur = { editId: id, fileId: n.fileId, blob: f && f.blob, mime: f && f.mime, name: f && f.name, baru: false };
+  tab('nota'); tampilBukti(f && f.blob, f && f.mime); $('status').innerHTML = '';
+  bukaForm({ tanggal: n.tanggal, toko: n.toko, noNota: n.noNota, total: n.total, catatan: n.catatan, items }, 'Ubah nota');
+}
+
+/* ---------- Upah ---------- */
+const hitungU = () => { $('uTotal').textContent = rp((parseFloat($('uQty').value) || 0) * (parseFloat($('uTarif').value) || 0)); };
+$('uQty').oninput = hitungU; $('uTarif').oninput = hitungU;
+function resetUpah() {
+  uEdit = null; ['uNama','uKerja','uTarif','uCat'].forEach(i => $(i).value = ''); $('uQty').value = 1; $('uTgl').value = hariIni();
+  $('judulUpah').textContent = 'Catat upah tukang'; $('btnUpahBatal').style.display = 'none'; hitungU();
+}
+$('btnUpahBatal').onclick = resetUpah;
+$('btnUpah').onclick = async () => {
+  if (!$('uNama').value.trim()) return alert('Isi nama tukang.');
+  const qty = parseFloat($('uQty').value) || 0, tarif = parseFloat($('uTarif').value) || 0;
+  await DB.put('upah', { id: uEdit || uid('u'), tanggal: $('uTgl').value || hariIni(), nama: $('uNama').value.trim(), pekerjaan: $('uKerja').value.trim(),
+    qty, tarif, total: qty * tarif, kategori: $('uKat').value, catatan: $('uCat').value });
+  resetUpah(); $('uMsg').innerHTML = '<div class="msg ok">Tersimpan ✓</div>'; setTimeout(() => { $('uMsg').innerHTML = ''; }, 2500);
+};
+async function editUpah(id) {
+  const u = await DB.get('upah', id); if (!u) return;
+  uEdit = id; tab('upah');
+  $('uTgl').value = u.tanggal; $('uNama').value = u.nama; $('uKerja').value = u.pekerjaan; $('uQty').value = u.qty; $('uTarif').value = u.tarif;
+  $('uKat').innerHTML = optKat(u.kategori); $('uCat').value = u.catatan || '';
+  $('judulUpah').textContent = 'Ubah upah'; $('btnUpahBatal').style.display = ''; hitungU();
+}
+
+/* ---------- Riwayat ---------- */
+const urut = (a, b) => String(b.tanggal).localeCompare(String(a.tanggal));
+async function riwayat() {
+  const box = $('rwBox'); let h = '';
+  if (rwMode === 'nota') {
+    const n = (await DB.all('nota')).sort(urut);
+    h = '<table><tr><th>Tanggal</th><th>Toko</th><th>No.</th><th class="r">Total</th><th></th></tr>' +
+      (n.map(t => `<tr><td>${esc(t.tanggal)}</td><td>${esc(t.toko)}</td><td>${esc(t.noNota)}</td><td class="r">${rp(t.total)}</td>
+        <td style="white-space:nowrap">${t.fileId ? `<button class="ln" data-act="foto" data-id="${t.fileId}">Foto</button>` : ''}
+        <button class="ln" data-act="enota" data-id="${t.id}">Ubah</button><button class="x" data-act="dnota" data-id="${t.id}">🗑</button></td></tr>`).join('')
+        || '<tr><td colspan="5" class="muted">Belum ada nota.</td></tr>') + '</table>';
+  } else if (rwMode === 'item') {
+    const it = (await DB.all('item')).sort(urut);
+    h = '<table><tr><th>Tanggal</th><th>Barang</th><th class="r">Jml</th><th>Sat</th><th class="r">Harga</th><th class="r">Subtotal</th><th>Kategori</th></tr>' +
+      (it.map(i => `<tr><td>${esc(i.tanggal)}</td><td>${esc(i.nama)}</td><td class="r">${esc(i.jumlah)}</td><td>${esc(i.satuan)}</td>
+        <td class="r">${rp(i.harga)}</td><td class="r">${rp(i.jumlah * i.harga)}</td><td>${esc(i.kategori)}</td></tr>`).join('')
+        || '<tr><td colspan="7" class="muted">Belum ada material.</td></tr>') + '</table>';
+  } else {
+    const u = (await DB.all('upah')).sort(urut);
+    h = '<table><tr><th>Tanggal</th><th>Tukang</th><th>Pekerjaan</th><th class="r">Qty</th><th class="r">Tarif</th><th class="r">Total</th><th>Kategori</th><th></th></tr>' +
+      (u.map(x => `<tr><td>${esc(x.tanggal)}</td><td>${esc(x.nama)}</td><td>${esc(x.pekerjaan)}</td><td class="r">${esc(x.qty)}</td>
+        <td class="r">${rp(x.tarif)}</td><td class="r">${rp(x.total)}</td><td>${esc(x.kategori)}</td>
+        <td style="white-space:nowrap"><button class="ln" data-act="eupah" data-id="${x.id}">Ubah</button><button class="x" data-act="dupah" data-id="${x.id}">🗑</button></td></tr>`).join('')
+        || '<tr><td colspan="8" class="muted">Belum ada upah.</td></tr>') + '</table>';
+  }
+  box.innerHTML = h;
+}
+$('rwBox').onclick = async e => {
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  const id = b.dataset.id, a = b.dataset.act;
+  if (a === 'foto') return lihatFile(id);
+  if (a === 'enota') return editNota(id);
+  if (a === 'eupah') return editUpah(id);
+  if (a === 'dnota') {
+    if (!confirm('Hapus nota ini beserta semua barang dan fotonya?')) return;
+    const n = await DB.get('nota', id), items = (await DB.all('item')).filter(i => i.notaId === id);
+    await DB.multi(['nota', 'item', 'file'], (N, I, F) => { N.delete(id); items.forEach(i => I.delete(i.id)); if (n && n.fileId) F.delete(n.fileId); });
+  }
+  if (a === 'dupah') {
+    if (!confirm('Hapus catatan upah ini?')) return;
+    await DB.multi(['upah'], U => U.delete(id));
+  }
+  riwayat();
+};
+async function lihatFile(fileId) {
+  const f = await DB.get('file', fileId); if (!f) return alert('Foto tidak ditemukan.');
+  if (modalUrl) URL.revokeObjectURL(modalUrl);
+  modalUrl = URL.createObjectURL(f.blob);
+  $('mBody').innerHTML = f.mime === 'application/pdf' ? `<iframe src="${modalUrl}"></iframe>` : `<img src="${modalUrl}" alt="Foto nota">`;
+  $('modal').classList.add('on');
+}
+$('mClose').onclick = () => { $('modal').classList.remove('on'); $('mBody').innerHTML = ''; };
+
+/* ---------- Pengaturan, cadangan ---------- */
+async function isiSet() {
+  $('sProv').value = SET.provider || ''; $('sGem').value = SET.geminiKey || ''; $('sCla').value = SET.claudeKey || '';
+  $('sKat').value = SET.kategori.join('\n');
+  try { if (navigator.storage && navigator.storage.estimate) { const e = await navigator.storage.estimate(); $('storInfo').textContent = 'Penyimpanan terpakai: ' + (e.usage / 1048576).toFixed(1) + ' MB'; } } catch (_) {}
+}
+$('btnSet').onclick = async () => {
+  SET.provider = $('sProv').value; SET.geminiKey = $('sGem').value.trim(); SET.claudeKey = $('sCla').value.trim();
+  const k = $('sKat').value.split('\n').map(s => s.trim()).filter(Boolean);
+  SET.kategori = k.length ? k : KAT_DEF.slice();
+  await saveSet(); cekAI(); $('uKat').innerHTML = optKat();
+  $('sMsg').innerHTML = '<span style="color:var(--ok)">Tersimpan ✓</span>'; setTimeout(() => { $('sMsg').innerHTML = ''; }, 2500);
+};
+function cekAI() {
+  const ok = SET.provider === 'GEMINI' ? SET.geminiKey : SET.provider === 'CLAUDE' ? SET.claudeKey : '';
+  $('aiInfo').innerHTML = ok ? '' : '<div class="msg warn">Pembaca nota (AI) belum diatur: buka tab Pengaturan. Tanpa itu, nota tetap bisa dicatat lewat "Isi manual".</div>';
+}
+async function bagikan(blob, nama) {
+  const f = new File([blob], nama, { type: blob.type });
+  if (navigator.canShare && navigator.canShare({ files: [f] })) {
+    try { await navigator.share({ files: [f], title: nama }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nama; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 15000);
+}
+$('btnEkspor').onclick = async () => {
+  $('bMsg').innerHTML = '<div class="msg info">Menyiapkan cadangan…</div>';
+  try {
+    const files = await DB.all('file');
+    const data = { versi: 1, tanggal: new Date().toISOString(), nota: await DB.all('nota'), item: await DB.all('item'), upah: await DB.all('upah'),
+      file: await Promise.all(files.map(async f => ({ id: f.id, mime: f.mime, name: f.name, data: await b64(f.blob) }))),
+      pengaturan: { kategori: SET.kategori, anggaran: SET.anggaran } };
+    await bagikan(new Blob([JSON.stringify(data)], { type: 'application/json' }), 'cadangan-kontrakan-' + hariIni() + '.json');
+    $('bMsg').innerHTML = '<div class="msg ok">Cadangan siap. Simpan ke iCloud Drive / Files.</div>';
+  } catch (e) { $('bMsg').innerHTML = `<div class="msg bad">${esc(e.message)}</div>`; }
+};
+const csvCell = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+const csv = rows => '﻿' + rows.map(r => r.map(csvCell).join(',')).join('\r\n');
+$('btnCsvM').onclick = async () => {
+  const it = (await DB.all('item')).sort(urut), notas = {}; (await DB.all('nota')).forEach(n => { notas[n.id] = n; });
+  const rows = [['Tanggal','Toko','No Nota','Barang','Jumlah','Satuan','Harga Satuan','Subtotal','Kategori']].concat(
+    it.map(i => { const n = notas[i.notaId] || {}; return [i.tanggal, n.toko, n.noNota, i.nama, i.jumlah, i.satuan, i.harga, i.jumlah * i.harga, i.kategori]; }));
+  bagikan(new Blob([csv(rows)], { type: 'text/csv' }), 'material-kontrakan.csv');
+};
+$('btnCsvU').onclick = async () => {
+  const u = (await DB.all('upah')).sort(urut);
+  const rows = [['Tanggal','Tukang','Pekerjaan','Qty','Tarif','Total','Kategori','Catatan']].concat(
+    u.map(x => [x.tanggal, x.nama, x.pekerjaan, x.qty, x.tarif, x.total, x.kategori, x.catatan]));
+  bagikan(new Blob([csv(rows)], { type: 'text/csv' }), 'upah-kontrakan.csv');
+};
+$('fImpor').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (!d.nota || !d.item || !d.upah) throw new Error('Berkas bukan cadangan aplikasi ini.');
+    if (!confirm('Ganti SEMUA data di iPad ini dengan isi cadangan?')) { e.target.value = ''; return; }
+    const blobOf = x => { const bin = atob(x.data), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type: x.mime }); };
+    const [oN, oI, oU, oF] = await Promise.all(['nota','item','upah','file'].map(s => DB.all(s)));
+    await DB.multi(['nota','item','upah','file'], (N, I, U, F) => {
+      oN.forEach(x => N.delete(x.id)); oI.forEach(x => I.delete(x.id)); oU.forEach(x => U.delete(x.id)); oF.forEach(x => F.delete(x.id));
+      d.nota.forEach(x => N.put(x)); d.item.forEach(x => I.put(x)); d.upah.forEach(x => U.put(x));
+      (d.file || []).forEach(x => F.put({ id: x.id, mime: x.mime, name: x.name, blob: blobOf(x) }));
+    });
+    if (d.pengaturan) { SET.kategori = d.pengaturan.kategori || SET.kategori; SET.anggaran = d.pengaturan.anggaran || SET.anggaran; await saveSet(); }
+    $('bMsg').innerHTML = '<div class="msg ok">Data berhasil dipulihkan ✓</div>'; isiSet(); $('uKat').innerHTML = optKat();
+  } catch (err) { $('bMsg').innerHTML = `<div class="msg bad">${esc(err.message)}</div>`; }
+  e.target.value = '';
+};
+
+/* ---------- Mulai ---------- */
+(async function init() {
+  try {
+    await DB.open(); await loadSet();
+    $('uKat').innerHTML = optKat(); $('uTgl').value = hariIni(); hitungU(); cekAI(); rekap();
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+  } catch (e) { document.querySelector('main').innerHTML = `<div class="msg bad">Penyimpanan lokal tidak bisa dibuka: ${esc(e.message)}. Jangan gunakan Mode Pribadi (Private Browsing).</div>`; }
+  if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
