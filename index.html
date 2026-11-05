@@ -54,16 +54,23 @@
   #modal.on { display:flex; flex-direction:column; }
   #modal .top { text-align:right; } #modal .top button { background:#fff; border:0; border-radius:8px; padding:10px 16px; font-size:15px; }
   #mBody { flex:1; overflow:auto; text-align:center; margin-top:10px; } #mBody img { max-width:100%; } #mBody iframe { width:100%; height:100%; border:0; background:#fff; }
+  .item .ket { grid-column:1 / -1; }
+  .btn.sec.on { background:var(--b); color:#fff; }
+  details.card > summary { cursor:pointer; list-style:none; } details.card > summary::-webkit-details-marker { display:none; }
+  tr.best td { background:#e6f4ea; font-weight:600; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px; background:#e8f0fe; color:var(--b); }
   @media (max-width:760px) { .item { grid-template-columns:1fr 1fr; } .item .nama, .item .kat { grid-column:1 / -1; } }
 </style>
 </head>
 <body>
-<header>🏠 Biaya Kontrakan <span style="font-weight:400;font-size:12px;opacity:.8">versi 4</span></header>
+<header>🏠 Biaya Kontrakan <span style="font-weight:400;font-size:12px;opacity:.8">versi 5</span></header>
 <nav id="nav">
   <button data-t="rekap" class="on">Rekap</button>
   <button data-t="nota">Nota</button>
   <button data-t="upah">Upah</button>
   <button data-t="riwayat">Riwayat</button>
+  <button data-t="bandingkan">Bandingkan</button>
+  <button data-t="audit">Audit</button>
   <button data-t="set">Pengaturan</button>
 </nav>
 <main>
@@ -121,7 +128,7 @@
     <b id="judulNota">2. Periksa &amp; koreksi isi nota</b>
     <div class="grid" style="margin-top:10px">
       <div><label>Tanggal</label><input type="date" id="nTgl"></div>
-      <div><label>Toko / Penjual</label><input id="nToko"></div>
+      <div><label>Toko / Penjual</label><input id="nToko" list="dlToko" autocomplete="off"></div>
       <div><label>No. Nota</label><input id="nNo"></div>
       <div><label>Total di nota (Rp)</label><input type="number" inputmode="decimal" id="nTotal"></div>
     </div>
@@ -129,7 +136,7 @@
     <div id="items"></div>
     <button class="btn sec" id="btnTambah">+ Tambah baris</button>
     <div class="msg info" id="cek"></div>
-    <div><label>Catatan (opsional)</label><input id="nCatatan"></div>
+    <div><label>Keterangan nota (opsional)</label><input id="nCatatan" placeholder="mis. pembelian tahap pondasi"></div>
     <p class="row"><button class="btn" id="btnSimpan">Simpan</button><button class="btn sec" id="btnBatal">Batal</button></p>
   </div>
 </section>
@@ -160,7 +167,28 @@
     <button class="btn sec" data-rw="item">Material</button>
     <button class="btn sec" data-rw="upah">Upah</button>
   </div>
+  <div style="margin-bottom:10px"><input id="rwCari" type="search" placeholder="Cari toko, barang, tukang, kategori, keterangan…"></div>
   <div class="card scroll" id="rwBox"></div>
+</section>
+
+<!-- BANDINGKAN -->
+<section id="bandingkan">
+  <div class="sub-tabs">
+    <button class="btn sec" data-bd="barang">Per barang</button>
+    <button class="btn sec" data-bd="toko">Per toko</button>
+  </div>
+  <div style="margin-bottom:10px"><input id="bdCari" type="search" placeholder="Cari barang atau toko…"></div>
+  <p class="muted" id="bdInfo"></p>
+  <div id="bdBox"></div>
+</section>
+
+<!-- AUDIT -->
+<section id="audit">
+  <div class="sub-tabs">
+    <button class="btn sec" data-au="log">Riwayat perubahan</button>
+    <button class="btn sec" data-au="sampah">Sampah (bisa dipulihkan)</button>
+  </div>
+  <div class="card" id="auBox"></div>
 </section>
 
 <!-- PENGATURAN -->
@@ -202,6 +230,7 @@
 
 </main>
 
+<datalist id="dlToko"></datalist><datalist id="dlBarang"></datalist>
 <div id="modal"><div class="top"><button id="mClose">Tutup</button></div><div id="mBody"></div></div>
 
 <script>
@@ -222,13 +251,14 @@ const DB = {
   db: null,
   async open() {
     this.db = await new Promise((ok, no) => {
-      const r = indexedDB.open('kontrakan', 1);
-      r.onupgradeneeded = () => { ['nota','item','upah','file','kv'].forEach(s => r.result.createObjectStore(s, { keyPath: s === 'kv' ? 'k' : 'id' })); };
+      const r = indexedDB.open('kontrakan', 2);
+      r.onupgradeneeded = () => { ['nota','item','upah','file','kv','log'].forEach(s => { if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s, { keyPath: s === 'kv' ? 'k' : 'id' }); }); };
       r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error);
     });
   },
   store(s, m) { return this.db.transaction(s, m || 'readonly').objectStore(s); },
-  all(s) { return rq(this.store(s).getAll()); },
+  all(s) { return rq(this.store(s).getAll()).then(r => r.filter(x => !x.del)); },
+  allX(s) { return rq(this.store(s).getAll()); },
   get(s, k) { return rq(this.store(s).get(k)); },
   put(s, v) { return rq(this.store(s, 'readwrite').put(v)); },
   multi(names, fn) {
@@ -250,7 +280,7 @@ const saveSet = () => DB.put('kv', { k: 'settings', v: SET });
 function tab(t) {
   document.querySelectorAll('#nav button').forEach(x => x.classList.toggle('on', x.dataset.t === t));
   document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === t));
-  if (t === 'rekap') rekap(); if (t === 'riwayat') riwayat(); if (t === 'set') isiSet();
+  if (t === 'rekap') rekap(); if (t === 'riwayat') riwayat(); if (t === 'set') isiSet(); if (t === 'bandingkan') bandingkan(); if (t === 'audit') audit(); if (t === 'nota') isiDatalist();
   window.scrollTo(0, 0);
 }
 document.querySelectorAll('#nav button').forEach(b => b.onclick = () => tab(b.dataset.t));
@@ -447,13 +477,14 @@ function tambahBaris(it) {
   it = it || {};
   const d = document.createElement('div'); d.className = 'item';
   d.innerHTML = `
-    <div class="nama"><label>Barang</label><input class="i-nama" value="${esc(it.nama || '')}"></div>
+    <div class="nama"><label>Barang</label><input class="i-nama" list="dlBarang" autocomplete="off" value="${esc(it.nama || '')}"></div>
     <div><label>Jumlah</label><input class="i-jml" type="number" inputmode="decimal" step="any" value="${it.jumlah == null ? 1 : it.jumlah}"></div>
     <div><label>Satuan</label><input class="i-sat" value="${esc(it.satuan || '')}"></div>
     <div><label>Harga satuan</label><input class="i-hrg" type="number" inputmode="decimal" step="any" value="${it.harga || ''}"></div>
     <div><label>Subtotal</label><div class="sub">Rp 0</div></div>
     <div class="kat"><label>Kategori</label><select class="i-kat">${optKat(it.kategori)}</select></div>
-    <button class="x" title="Hapus baris">✕</button>`;
+    <button class="x" title="Hapus baris">✕</button>
+    <div class="ket"><label>Keterangan barang (opsional)</label><input class="i-ket" value="${esc(it.catatan || '')}" placeholder="mis. untuk pondasi blok A, harga promo, bonus ongkir"></div>`;
   d.querySelector('.i-jml').oninput = hitung; d.querySelector('.i-hrg').oninput = hitung;
   d.querySelector('.x').onclick = () => { d.remove(); hitung(); };
   $('items').appendChild(d); hitung();
@@ -462,7 +493,7 @@ function ambilItems() {
   return [...document.querySelectorAll('#items .item')].map(r => ({
     nama: r.querySelector('.i-nama').value.trim(), jumlah: parseFloat(r.querySelector('.i-jml').value) || 0,
     satuan: r.querySelector('.i-sat').value.trim(), harga: parseFloat(r.querySelector('.i-hrg').value) || 0,
-    kategori: r.querySelector('.i-kat').value
+    kategori: r.querySelector('.i-kat').value, catatan: r.querySelector('.i-ket').value.trim()
   }));
 }
 function hitung() {
@@ -488,14 +519,17 @@ $('btnSimpan').onclick = async () => {
       if (ada && !confirm('Nota dengan toko & nomor yang sama sudah tercatat. Tetap simpan?')) { $('btnSimpan').disabled = false; return; }
     }
     const id = cur.editId || uid('n');
+    const notaLama = cur.editId ? await DB.get('nota', id) : null;
     const lama = cur.editId ? (await DB.all('item')).filter(i => i.notaId === id) : [];
+    const notaBaru = { id, tanggal, toko, noNota, total: parseFloat($('nTotal').value) || sum, catatan: $('nCatatan').value.trim(), fileId: cur.fileId || null };
+    const itemBaru = items.map(i => ({ id: uid('i'), notaId: id, tanggal, nama: i.nama, jumlah: i.jumlah, satuan: i.satuan, harga: i.harga, kategori: i.kategori, catatan: i.catatan }));
     await DB.multi(['nota', 'item', 'file'], (N, I, F) => {
       if (cur.fileId && cur.baru) F.put({ id: cur.fileId, blob: cur.blob, mime: cur.mime, name: cur.name });
       lama.forEach(o => I.delete(o.id));
-      N.put({ id, tanggal, toko, noNota, total: parseFloat($('nTotal').value) || sum, catatan: $('nCatatan').value, fileId: cur.fileId || null });
-      items.forEach(i => I.put({ id: uid('i'), notaId: id, tanggal, nama: i.nama, jumlah: i.jumlah, satuan: i.satuan, harga: i.harga, kategori: i.kategori }));
+      N.put(notaBaru); itemBaru.forEach(i => I.put(i));
     });
-    cur = {}; $('formNota').style.display = 'none'; tampilBukti(null);
+    await catat(cur.editId ? 'ubah' : 'tambah', 'nota', id, ringNotaJudul(notaBaru), cur.editId ? { nota: notaLama, items: lama } : null, { nota: notaBaru, items: itemBaru });
+    cur = {}; $('formNota').style.display = 'none'; tampilBukti(null); isiDatalist();
     $('status').innerHTML = '<div class="msg ok">Tersimpan ✓ Silakan foto nota berikutnya.</div>';
   } catch (e) { alert('Gagal menyimpan: ' + e.message); }
   $('btnSimpan').disabled = false;
@@ -520,8 +554,11 @@ $('btnUpahBatal').onclick = resetUpah;
 $('btnUpah').onclick = async () => {
   if (!$('uNama').value.trim()) return alert('Isi nama tukang.');
   const qty = parseFloat($('uQty').value) || 0, tarif = parseFloat($('uTarif').value) || 0;
-  await DB.put('upah', { id: uEdit || uid('u'), tanggal: $('uTgl').value || hariIni(), nama: $('uNama').value.trim(), pekerjaan: $('uKerja').value.trim(),
-    qty, tarif, total: qty * tarif, kategori: $('uKat').value, catatan: $('uCat').value });
+  const lama = uEdit ? await DB.get('upah', uEdit) : null;
+  const baru = { id: uEdit || uid('u'), tanggal: $('uTgl').value || hariIni(), nama: $('uNama').value.trim(), pekerjaan: $('uKerja').value.trim(),
+    qty, tarif, total: qty * tarif, kategori: $('uKat').value, catatan: $('uCat').value.trim() };
+  await DB.put('upah', baru);
+  await catat(lama ? 'ubah' : 'tambah', 'upah', baru.id, baru.nama + ' · ' + rp(baru.total), lama, baru);
   resetUpah(); $('uMsg').innerHTML = '<div class="msg ok">Tersimpan ✓</div>'; setTimeout(() => { $('uMsg').innerHTML = ''; }, 2500);
 };
 async function editUpah(id) {
@@ -534,30 +571,34 @@ async function editUpah(id) {
 
 /* ---------- Riwayat ---------- */
 const urut = (a, b) => String(b.tanggal).localeCompare(String(a.tanggal));
+const cocok = (txt, q) => !q || String(txt).toLowerCase().indexOf(q) > -1;
 async function riwayat() {
-  const box = $('rwBox'); let h = '';
+  const q = ($('rwCari').value || '').trim().toLowerCase(); let h = '', jml = 0;
+  document.querySelectorAll('[data-rw]').forEach(b => b.classList.toggle('on', b.dataset.rw === rwMode));
+  const nm = {}; (await DB.all('nota')).forEach(n => { nm[n.id] = n; });
   if (rwMode === 'nota') {
-    const n = (await DB.all('nota')).sort(urut);
-    h = '<table><tr><th>Tanggal</th><th>Toko</th><th>No.</th><th class="r">Total</th><th></th></tr>' +
-      (n.map(t => `<tr><td>${esc(t.tanggal)}</td><td>${esc(t.toko)}</td><td>${esc(t.noNota)}</td><td class="r">${rp(t.total)}</td>
-        <td style="white-space:nowrap">${t.fileId ? `<button class="ln" data-act="foto" data-id="${t.fileId}">Foto</button>` : ''}
-        <button class="ln" data-act="enota" data-id="${t.id}">Ubah</button><button class="x" data-act="dnota" data-id="${t.id}">🗑</button></td></tr>`).join('')
-        || '<tr><td colspan="5" class="muted">Belum ada nota.</td></tr>') + '</table>';
+    const n = Object.values(nm).filter(t => cocok([t.toko, t.noNota, t.catatan, t.tanggal].join(' '), q)).sort(urut); jml = n.length;
+    h = '<table><tr><th>Tanggal</th><th>Toko</th><th>No.</th><th>Keterangan</th><th class="r">Total</th><th></th></tr>' +
+      (n.map(t => `<tr><td>${esc(t.tanggal)}</td><td>${esc(t.toko)}</td><td>${esc(t.noNota)}</td><td class="muted">${esc(t.catatan)}</td><td class="r">${rp(t.total)}</td>
+        <td style="white-space:nowrap">${t.fileId ? `<button class="ln" data-act="foto" data-id="${esc(t.fileId)}">Foto</button>` : ''}
+        <button class="ln" data-act="enota" data-id="${esc(t.id)}">Ubah</button><button class="x" title="Hapus" data-act="dnota" data-id="${esc(t.id)}">🗑</button></td></tr>`).join('')
+        || '<tr><td colspan="6" class="muted">Tidak ada data.</td></tr>') + '</table>';
   } else if (rwMode === 'item') {
-    const it = (await DB.all('item')).sort(urut);
-    h = '<table><tr><th>Tanggal</th><th>Barang</th><th class="r">Jml</th><th>Sat</th><th class="r">Harga</th><th class="r">Subtotal</th><th>Kategori</th></tr>' +
-      (it.map(i => `<tr><td>${esc(i.tanggal)}</td><td>${esc(i.nama)}</td><td class="r">${esc(i.jumlah)}</td><td>${esc(i.satuan)}</td>
-        <td class="r">${rp(i.harga)}</td><td class="r">${rp(i.jumlah * i.harga)}</td><td>${esc(i.kategori)}</td></tr>`).join('')
-        || '<tr><td colspan="7" class="muted">Belum ada material.</td></tr>') + '</table>';
+    const it = (await DB.all('item')).filter(i => cocok([i.nama, (nm[i.notaId] || {}).toko, i.kategori, i.catatan, i.tanggal].join(' '), q)).sort(urut); jml = it.length;
+    h = '<table><tr><th>Tanggal</th><th>Toko</th><th>Barang</th><th class="r">Jml</th><th class="r">Harga</th><th class="r">Subtotal</th><th>Kategori</th><th>Keterangan</th><th></th></tr>' +
+      (it.map(i => `<tr><td>${esc(i.tanggal)}</td><td>${esc((nm[i.notaId] || {}).toko)}</td><td>${esc(i.nama)}</td><td class="r">${esc(fmtQ(i.jumlah))} ${esc(i.satuan)}</td>
+        <td class="r">${rp(i.harga)}</td><td class="r">${rp(i.jumlah * i.harga)}</td><td>${esc(i.kategori)}</td><td class="muted">${esc(i.catatan)}</td>
+        <td style="white-space:nowrap"><button class="ln" data-act="eitem" data-id="${esc(i.id)}">Ubah</button><button class="x" title="Hapus" data-act="ditem" data-id="${esc(i.id)}">🗑</button></td></tr>`).join('')
+        || '<tr><td colspan="9" class="muted">Tidak ada data.</td></tr>') + '</table>';
   } else {
-    const u = (await DB.all('upah')).sort(urut);
-    h = '<table><tr><th>Tanggal</th><th>Tukang</th><th>Pekerjaan</th><th class="r">Qty</th><th class="r">Tarif</th><th class="r">Total</th><th>Kategori</th><th></th></tr>' +
+    const u = (await DB.all('upah')).filter(x => cocok([x.nama, x.pekerjaan, x.kategori, x.catatan, x.tanggal].join(' '), q)).sort(urut); jml = u.length;
+    h = '<table><tr><th>Tanggal</th><th>Tukang</th><th>Pekerjaan</th><th class="r">Qty</th><th class="r">Tarif</th><th class="r">Total</th><th>Kategori</th><th>Keterangan</th><th></th></tr>' +
       (u.map(x => `<tr><td>${esc(x.tanggal)}</td><td>${esc(x.nama)}</td><td>${esc(x.pekerjaan)}</td><td class="r">${esc(x.qty)}</td>
-        <td class="r">${rp(x.tarif)}</td><td class="r">${rp(x.total)}</td><td>${esc(x.kategori)}</td>
-        <td style="white-space:nowrap"><button class="ln" data-act="eupah" data-id="${x.id}">Ubah</button><button class="x" data-act="dupah" data-id="${x.id}">🗑</button></td></tr>`).join('')
-        || '<tr><td colspan="8" class="muted">Belum ada upah.</td></tr>') + '</table>';
+        <td class="r">${rp(x.tarif)}</td><td class="r">${rp(x.total)}</td><td>${esc(x.kategori)}</td><td class="muted">${esc(x.catatan)}</td>
+        <td style="white-space:nowrap"><button class="ln" data-act="eupah" data-id="${esc(x.id)}">Ubah</button><button class="x" title="Hapus" data-act="dupah" data-id="${esc(x.id)}">🗑</button></td></tr>`).join('')
+        || '<tr><td colspan="9" class="muted">Tidak ada data.</td></tr>') + '</table>';
   }
-  box.innerHTML = h;
+  $('rwBox').innerHTML = h + `<p class="muted">${jml} data. Data yang dihapus masuk ke tab Audit &gt; Sampah dan bisa dipulihkan.</p>`;
 }
 $('rwBox').onclick = async e => {
   const b = e.target.closest('button[data-act]'); if (!b) return;
@@ -565,17 +606,63 @@ $('rwBox').onclick = async e => {
   if (a === 'foto') return lihatFile(id);
   if (a === 'enota') return editNota(id);
   if (a === 'eupah') return editUpah(id);
-  if (a === 'dnota') {
-    if (!confirm('Hapus nota ini beserta semua barang dan fotonya?')) return;
-    const n = await DB.get('nota', id), items = (await DB.all('item')).filter(i => i.notaId === id);
-    await DB.multi(['nota', 'item', 'file'], (N, I, F) => { N.delete(id); items.forEach(i => I.delete(i.id)); if (n && n.fileId) F.delete(n.fileId); });
-  }
-  if (a === 'dupah') {
-    if (!confirm('Hapus catatan upah ini?')) return;
-    await DB.multi(['upah'], U => U.delete(id));
-  }
-  riwayat();
+  if (a === 'eitem') return editItem(id);
+  if (a === 'dnota') return hapusNota(id);
+  if (a === 'ditem') return hapusItem(id);
+  if (a === 'dupah') return hapusUpah(id);
 };
+$('rwCari').oninput = riwayat;
+async function hapusNota(id) {
+  const n = await DB.get('nota', id); if (!n) return;
+  const items = (await DB.all('item')).filter(i => i.notaId === id);
+  if (!confirm('Pindahkan nota ini (' + items.length + ' barang) ke Sampah? Masih bisa dipulihkan dari tab Audit.')) return;
+  const ts = Date.now();
+  await DB.multi(['nota', 'item'], (N, I) => { N.put(Object.assign({}, n, { del: ts })); items.forEach(i => I.put(Object.assign({}, i, { del: ts, delBy: id }))); });
+  await catat('hapus', 'nota', id, ringNotaJudul(n), { nota: n, items }, null);
+  riwayat();
+}
+async function hapusItem(id) {
+  const i = await DB.get('item', id); if (!i) return;
+  if (!confirm('Pindahkan "' + i.nama + '" ke Sampah?')) return;
+  await DB.put('item', Object.assign({}, i, { del: Date.now() }));
+  await catat('hapus', 'item', id, i.nama + ' · ' + rp(i.jumlah * i.harga), i, null);
+  riwayat();
+}
+async function hapusUpah(id) {
+  const u = await DB.get('upah', id); if (!u) return;
+  if (!confirm('Pindahkan catatan upah "' + u.nama + '" ke Sampah?')) return;
+  await DB.put('upah', Object.assign({}, u, { del: Date.now() }));
+  await catat('hapus', 'upah', id, u.nama + ' · ' + rp(u.total), u, null);
+  riwayat();
+}
+async function editItem(id) {
+  const i = await DB.get('item', id); if (!i) return;
+  const n = await DB.get('nota', i.notaId); await isiDatalist();
+  $('mBody').innerHTML = `<div class="card" style="max-width:540px;margin:20px auto;text-align:left">
+    <b>Ubah barang</b><div class="muted">Toko: ${esc(n ? n.toko : '-')} (untuk mengganti toko, gunakan "Ubah" pada nota)</div>
+    <div class="grid" style="margin-top:10px">
+      <div><label>Tanggal</label><input type="date" id="eTgl" value="${esc(i.tanggal)}"></div>
+      <div><label>Barang</label><input id="eNama" list="dlBarang" autocomplete="off" value="${esc(i.nama)}"></div>
+      <div><label>Jumlah</label><input type="number" inputmode="decimal" step="any" id="eJml" value="${i.jumlah}"></div>
+      <div><label>Satuan</label><input id="eSat" value="${esc(i.satuan)}"></div>
+      <div><label>Harga satuan</label><input type="number" inputmode="decimal" step="any" id="eHrg" value="${i.harga}"></div>
+      <div><label>Kategori</label><select id="eKat">${optKat(i.kategori)}</select></div>
+    </div>
+    <div style="margin-top:8px"><label>Keterangan</label><input id="eKet" value="${esc(i.catatan || '')}"></div>
+    <p>Subtotal: <b id="eSub"></b></p>
+    <p class="row"><button class="btn" id="eSimpan">Simpan perubahan</button><button class="btn sec" id="eBatal">Batal</button></p></div>`;
+  const hs = () => { $('eSub').textContent = rp((parseFloat($('eJml').value) || 0) * (parseFloat($('eHrg').value) || 0)); };
+  $('eJml').oninput = hs; $('eHrg').oninput = hs; hs();
+  $('eBatal').onclick = () => $('mClose').click();
+  $('eSimpan').onclick = async () => {
+    const baru = Object.assign({}, i, { tanggal: $('eTgl').value || i.tanggal, nama: $('eNama').value.trim() || i.nama, jumlah: parseFloat($('eJml').value) || 0,
+      satuan: $('eSat').value.trim(), harga: parseFloat($('eHrg').value) || 0, kategori: $('eKat').value, catatan: $('eKet').value.trim() });
+    await DB.put('item', baru);
+    await catat('ubah', 'item', id, baru.nama, i, baru);
+    $('mClose').click(); riwayat(); isiDatalist();
+  };
+  $('modal').classList.add('on');
+}
 async function lihatFile(fileId) {
   const f = await DB.get('file', fileId); if (!f) return alert('Foto tidak ditemukan.');
   if (modalUrl) URL.revokeObjectURL(modalUrl);
@@ -625,7 +712,7 @@ $('btnEkspor').onclick = async () => {
   $('bMsg').innerHTML = '<div class="msg info">Menyiapkan cadangan…</div>';
   try {
     const files = await DB.all('file');
-    const data = { versi: 1, tanggal: new Date().toISOString(), nota: await DB.all('nota'), item: await DB.all('item'), upah: await DB.all('upah'),
+    const data = { versi: 2, tanggal: new Date().toISOString(), nota: await DB.allX('nota'), item: await DB.allX('item'), upah: await DB.allX('upah'), log: await DB.all('log'),
       file: await Promise.all(files.map(async f => ({ id: f.id, mime: f.mime, name: f.name, data: await b64(f.blob) }))),
       pengaturan: { kategori: SET.kategori, anggaran: SET.anggaran } };
     $('bMsg').innerHTML = '';
@@ -636,13 +723,13 @@ const csvCell = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
 const csv = rows => '﻿' + rows.map(r => r.map(csvCell).join(',')).join('\r\n');
 $('btnCsvM').onclick = async () => {
   const it = (await DB.all('item')).sort(urut), notas = {}; (await DB.all('nota')).forEach(n => { notas[n.id] = n; });
-  const rows = [['Tanggal','Toko','No Nota','Barang','Jumlah','Satuan','Harga Satuan','Subtotal','Kategori']].concat(
-    it.map(i => { const n = notas[i.notaId] || {}; return [i.tanggal, n.toko, n.noNota, i.nama, i.jumlah, i.satuan, i.harga, i.jumlah * i.harga, i.kategori]; }));
+  const rows = [['Tanggal','Toko','No Nota','Barang','Jumlah','Satuan','Harga Satuan','Subtotal','Kategori','Keterangan']].concat(
+    it.map(i => { const n = notas[i.notaId] || {}; return [i.tanggal, n.toko, n.noNota, i.nama, i.jumlah, i.satuan, i.harga, i.jumlah * i.harga, i.kategori, i.catatan]; }));
   dialogFile(new Blob([csv(rows)], { type: 'text/csv' }), 'material-kontrakan.csv', 'Ekspor material siap');
 };
 $('btnCsvU').onclick = async () => {
   const u = (await DB.all('upah')).sort(urut);
-  const rows = [['Tanggal','Tukang','Pekerjaan','Qty','Tarif','Total','Kategori','Catatan']].concat(
+  const rows = [['Tanggal','Tukang','Pekerjaan','Qty','Tarif','Total','Kategori','Keterangan']].concat(
     u.map(x => [x.tanggal, x.nama, x.pekerjaan, x.qty, x.tarif, x.total, x.kategori, x.catatan]));
   dialogFile(new Blob([csv(rows)], { type: 'text/csv' }), 'upah-kontrakan.csv', 'Ekspor upah siap');
 };
@@ -653,10 +740,10 @@ $('fImpor').onchange = async e => {
     if (!d.nota || !d.item || !d.upah) throw new Error('Berkas bukan cadangan aplikasi ini.');
     if (!confirm('Ganti SEMUA data di iPad ini dengan isi cadangan?')) { e.target.value = ''; return; }
     const blobOf = x => { const bin = atob(x.data), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type: x.mime }); };
-    const [oN, oI, oU, oF] = await Promise.all(['nota','item','upah','file'].map(s => DB.all(s)));
-    await DB.multi(['nota','item','upah','file'], (N, I, U, F) => {
-      oN.forEach(x => N.delete(x.id)); oI.forEach(x => I.delete(x.id)); oU.forEach(x => U.delete(x.id)); oF.forEach(x => F.delete(x.id));
-      d.nota.forEach(x => N.put(x)); d.item.forEach(x => I.put(x)); d.upah.forEach(x => U.put(x));
+    const [oN, oI, oU, oF, oL] = await Promise.all(['nota', 'item', 'upah', 'file', 'log'].map(x => DB.allX(x)));
+    await DB.multi(['nota', 'item', 'upah', 'file', 'log'], (N, I, U, F, L) => {
+      oN.forEach(x => N.delete(x.id)); oI.forEach(x => I.delete(x.id)); oU.forEach(x => U.delete(x.id)); oF.forEach(x => F.delete(x.id)); oL.forEach(x => L.delete(x.id));
+      d.nota.forEach(x => N.put(x)); d.item.forEach(x => I.put(x)); d.upah.forEach(x => U.put(x)); (d.log || []).forEach(x => L.put(x));
       (d.file || []).forEach(x => F.put({ id: x.id, mime: x.mime, name: x.name, blob: blobOf(x) }));
     });
     if (d.pengaturan) { SET.kategori = d.pengaturan.kategori || SET.kategori; SET.anggaran = d.pengaturan.anggaran || SET.anggaran; await saveSet(); }
@@ -664,6 +751,176 @@ $('fImpor').onchange = async e => {
   } catch (err) { $('bMsg').innerHTML = `<div class="msg bad">${esc(err.message)}</div>`; }
   e.target.value = '';
 };
+
+/* ---------- Catatan perubahan (audit), sampah, perbandingan harga ---------- */
+const AKSI = { tambah: 'Tambah', ubah: 'Ubah', hapus: 'Hapus', pulihkan: 'Pulihkan', permanen: 'Hapus permanen' };
+const fmtTgl = t => /^\d{4}-\d{2}-\d{2}$/.test(t) ? t.slice(8) + '-' + t.slice(5, 7) + '-' + t.slice(0, 4) : (t || '-');
+const fmtQ = x => String(Math.round((Number(x) || 0) * 100) / 100).replace('.', ',');
+const ringNotaJudul = n => (n.toko || '(tanpa toko)') + (n.noNota ? ' #' + n.noNota : '') + ' · ' + rp(n.total) + ' · ' + fmtTgl(n.tanggal);
+async function catat(aksi, jenis, ref, ringkas, sebelum, sesudah) {
+  try { await DB.put('log', { id: uid('l'), waktu: new Date().toISOString(), aksi, jenis, ref, ringkas, sebelum: sebelum || null, sesudah: sesudah || null }); } catch (_) { /* log bersifat tambahan */ }
+}
+async function isiDatalist() {
+  const [n, i] = await Promise.all([DB.all('nota'), DB.all('item')]);
+  const uniq = a => [...new Set(a.map(x => String(x || '').trim()).filter(Boolean))].sort();
+  $('dlToko').innerHTML = uniq(n.map(x => x.toko)).map(x => `<option value="${esc(x)}">`).join('');
+  $('dlBarang').innerHTML = uniq(i.map(x => x.nama)).map(x => `<option value="${esc(x)}">`).join('');
+}
+
+let bdMode = 'barang', auMode = 'log';
+document.querySelectorAll('[data-bd]').forEach(b => b.onclick = () => { bdMode = b.dataset.bd; bandingkan(); });
+document.querySelectorAll('[data-au]').forEach(b => b.onclick = () => { auMode = b.dataset.au; audit(); });
+$('bdCari').oninput = bandingkan;
+
+async function bandingkan() {
+  document.querySelectorAll('[data-bd]').forEach(b => b.classList.toggle('on', b.dataset.bd === bdMode));
+  const q = ($('bdCari').value || '').trim().toLowerCase();
+  const [items, notas] = await Promise.all([DB.all('item'), DB.all('nota')]);
+  const nm = {}; notas.forEach(n => { nm[n.id] = n; });
+  const tokoDari = i => String((nm[i.notaId] || {}).toko || '').trim() || '(tanpa toko)';
+  let h = '';
+  if (bdMode === 'barang') {
+    $('bdInfo').textContent = 'Harga dibandingkan per barang dengan satuan yang sama. Gunakan nama barang yang konsisten (pilih dari saran saat mengetik) agar pembelian tergabung. Urutan toko: harga terakhir termurah di atas.';
+    const g = {};
+    items.forEach(i => {
+      const key = String(i.nama).trim().toLowerCase().replace(/\s+/g, ' ') + '|' + String(i.satuan || '').trim().toLowerCase();
+      const t = tokoDari(i);
+      const G = g[key] = g[key] || { nama: String(i.nama).trim(), satuan: i.satuan || '', toko: {}, total: 0 };
+      const T = G.toko[t] = G.toko[t] || { n: 0, qty: 0, total: 0, min: Infinity, max: 0, last: null };
+      const sub = i.jumlah * i.harga;
+      T.n++; T.qty += i.jumlah; T.total += sub; T.min = Math.min(T.min, i.harga); T.max = Math.max(T.max, i.harga);
+      if (!T.last || String(i.tanggal) >= String(T.last.tanggal)) T.last = { tanggal: i.tanggal, harga: i.harga };
+      G.total += sub;
+    });
+    const list = Object.values(g).filter(G => cocok(G.nama + ' ' + Object.keys(G.toko).join(' '), q)).sort((a, b) => b.total - a.total);
+    h = list.length ? list.map(G => {
+      const rows = Object.keys(G.toko).map(k => ({ k, T: G.toko[k] })).sort((a, b) => a.T.last.harga - b.T.last.harga);
+      const murah = rows[0], mahal = rows[rows.length - 1];
+      const selisih = rows.length > 1 && murah.T.last.harga > 0 ? Math.round((mahal.T.last.harga / murah.T.last.harga - 1) * 100) : 0;
+      const ring = rows.length > 1
+        ? `${rows.length} toko · termurah ${rp(murah.T.last.harga)} (${esc(murah.k)}) · selisih ${selisih}%`
+        : `1 toko · ${rp(murah.T.last.harga)} (${esc(murah.k)})`;
+      return `<details class="card"${list.length <= 3 ? ' open' : ''}><summary><div class="row" style="justify-content:space-between"><b>${esc(G.nama)}${G.satuan ? ' <span class="muted">/ ' + esc(G.satuan) + '</span>' : ''}</b><span class="muted">${ring}</span></div></summary>
+        <div class="scroll" style="margin-top:8px"><table><tr><th>Toko</th><th class="r">Dibeli</th><th class="r">Harga terakhir</th><th class="r">Terendah</th><th class="r">Tertinggi</th><th class="r">Rata-rata</th><th class="r">Total belanja</th><th class="r">vs termurah</th></tr>` +
+        rows.map((r, idx) => {
+          const T = r.T, pct = murah.T.last.harga > 0 ? Math.round((T.last.harga / murah.T.last.harga - 1) * 100) : 0;
+          return `<tr class="${idx === 0 && rows.length > 1 ? 'best' : ''}"><td>${esc(r.k)}${idx === 0 && rows.length > 1 ? ' ✓' : ''}</td><td class="r">${T.n}× (${esc(fmtQ(T.qty))})</td>
+            <td class="r">${rp(T.last.harga)}<div class="muted">${esc(fmtTgl(T.last.tanggal))}</div></td><td class="r">${rp(T.min)}</td><td class="r">${rp(T.max)}</td>
+            <td class="r">${rp(T.qty ? T.total / T.qty : 0)}</td><td class="r">${rp(T.total)}</td><td class="r">${idx === 0 ? '-' : '+' + pct + '%'}</td></tr>`;
+        }).join('') + '</table></div></details>';
+    }).join('') : '<div class="card muted">Belum ada data pembelian yang cocok.</div>';
+  } else {
+    $('bdInfo').textContent = 'Total belanja material per toko.';
+    const t = {};
+    items.forEach(i => {
+      const k = tokoDari(i); const T = t[k] = t[k] || { nota: new Set(), jenis: new Set(), total: 0, last: '' };
+      T.nota.add(i.notaId); T.jenis.add(String(i.nama).trim().toLowerCase()); T.total += i.jumlah * i.harga;
+      if (String(i.tanggal) > T.last) T.last = String(i.tanggal);
+    });
+    const tot = Object.keys(t).reduce((a, k) => a + t[k].total, 0);
+    const ks = Object.keys(t).filter(k => cocok(k, q)).sort((a, b) => t[b].total - t[a].total);
+    h = '<div class="card scroll"><table><tr><th>Toko</th><th class="r">Jumlah nota</th><th class="r">Jenis barang</th><th class="r">Total belanja</th><th class="r">%</th><th>Terakhir beli</th></tr>' +
+      (ks.map(k => `<tr><td>${esc(k)}</td><td class="r">${t[k].nota.size}</td><td class="r">${t[k].jenis.size}</td><td class="r"><b>${rp(t[k].total)}</b></td>
+        <td class="r">${tot ? Math.round(t[k].total / tot * 100) : 0}%</td><td>${esc(fmtTgl(t[k].last))}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">Belum ada data.</td></tr>') + '</table></div>';
+  }
+  $('bdBox').innerHTML = h;
+}
+
+const NAMA_FIELD = { tanggal: 'Tanggal', nama: 'Nama', jumlah: 'Jumlah', satuan: 'Satuan', harga: 'Harga', kategori: 'Kategori', catatan: 'Keterangan', toko: 'Toko',
+  noNota: 'No. nota', total: 'Total', qty: 'Qty', tarif: 'Tarif', pekerjaan: 'Pekerjaan' };
+function diffObj(a, b) {
+  const v = x => (x === undefined || x === null || x === '') ? '(kosong)' : String(x);
+  const skip = { id: 1, del: 1, delBy: 1, notaId: 1, fileId: 1 }, out = [];
+  new Set(Object.keys(a || {}).concat(Object.keys(b || {}))).forEach(k => {
+    if (skip[k]) return;
+    const x = a ? a[k] : undefined, y = b ? b[k] : undefined;
+    if (String(x == null ? '' : x) !== String(y == null ? '' : y)) out.push((NAMA_FIELD[k] || k) + ': ' + v(x) + ' → ' + v(y));
+  });
+  return out;
+}
+function ringkasSnap(sn) {
+  if (!sn) return '';
+  const n = sn.nota || {};
+  return (n.toko || '-') + ' · ' + fmtTgl(n.tanggal) + ' · No ' + (n.noNota || '-') + ' · total nota ' + rp(n.total) + (n.catatan ? ' · ' + n.catatan : '') + '\n' +
+    (sn.items || []).map(i => '• ' + i.nama + ' - ' + fmtQ(i.jumlah) + ' ' + (i.satuan || '') + ' × ' + rp(i.harga) + ' = ' + rp(i.jumlah * i.harga) + (i.catatan ? ' [' + i.catatan + ']' : '')).join('\n');
+}
+function detailLog(l) {
+  const pre = t => `<pre style="white-space:pre-wrap;margin:6px 0 0;font:13px/1.45 inherit;color:#3c4043">${esc(t)}</pre>`;
+  if (l.jenis === 'nota') {
+    if (!l.sebelum && !l.sesudah) return '';
+    if (l.aksi === 'ubah' && l.sebelum && l.sesudah) {
+      const d = diffObj(l.sebelum.nota, l.sesudah.nota);
+      return `<details><summary class="muted">Lihat detail</summary>${d.length ? pre('Perubahan nota:\n' + d.join('\n')) : ''}${pre('SEBELUM:\n' + ringkasSnap(l.sebelum))}${pre('SESUDAH:\n' + ringkasSnap(l.sesudah))}</details>`;
+    }
+    return `<details><summary class="muted">Lihat detail</summary>${pre(ringkasSnap(l.sebelum || l.sesudah))}</details>`;
+  }
+  if (l.aksi === 'ubah' && l.sebelum && l.sesudah) return pre(diffObj(l.sebelum, l.sesudah).join('\n') || '(tidak ada perubahan isi)');
+  const o = l.sebelum || l.sesudah;
+  return o ? `<details><summary class="muted">Lihat detail</summary>${pre(diffObj({}, o).map(x => x.replace(' → (kosong)', '').replace('(kosong) → ', '')).join('\n'))}</details>` : '';
+}
+
+async function audit() {
+  document.querySelectorAll('[data-au]').forEach(b => b.classList.toggle('on', b.dataset.au === auMode));
+  let h = '';
+  if (auMode === 'log') {
+    const logs = (await DB.all('log')).sort((a, b) => String(b.waktu).localeCompare(String(a.waktu)));
+    h = '<p class="muted">Semua penambahan, perubahan, dan penghapusan tercatat di sini sebagai bahan pemeriksaan. Menampilkan hingga 300 catatan terbaru.</p>' +
+      (logs.length ? logs.slice(0, 300).map(l => `<div style="padding:10px 0;border-bottom:1px solid var(--line)">
+        <div class="row" style="justify-content:space-between"><span><span class="badge">${esc(AKSI[l.aksi] || l.aksi)}</span> <b>${esc(l.jenis)}</b> — ${esc(l.ringkas)}</span><span class="muted">${esc(new Date(l.waktu).toLocaleString('id-ID'))}</span></div>${detailLog(l)}</div>`).join('')
+        : '<p class="muted">Belum ada perubahan tercatat.</p>');
+  } else {
+    const [N, I, U] = await Promise.all([DB.allX('nota'), DB.allX('item'), DB.allX('upah')]);
+    const tk = (j, id, judul, ts) => `<tr><td>${j}</td><td>${esc(judul)}</td><td>${esc(new Date(ts).toLocaleDateString('id-ID'))}</td>
+      <td style="white-space:nowrap"><button class="ln" data-act="pulih" data-j="${j}" data-id="${esc(id)}">Pulihkan</button><button class="x" title="Hapus permanen" data-act="perm" data-j="${j}" data-id="${esc(id)}">🗑</button></td></tr>`;
+    const rows = []
+      .concat(N.filter(x => x.del).map(n => ({ ts: n.del, r: tk('nota', n.id, ringNotaJudul(n) + ' (' + I.filter(i => i.notaId === n.id && i.delBy === n.id).length + ' barang)', n.del) })))
+      .concat(I.filter(x => x.del && !x.delBy).map(i => ({ ts: i.del, r: tk('item', i.id, i.nama + ' · ' + rp(i.jumlah * i.harga), i.del) })))
+      .concat(U.filter(x => x.del).map(u => ({ ts: u.del, r: tk('upah', u.id, u.nama + ' · ' + rp(u.total), u.del) })))
+      .sort((a, b) => b.ts - a.ts);
+    h = '<p class="muted">Data yang dihapus tidak ikut dihitung di rekap. Pulihkan jika salah hapus, atau hapus permanen jika yakin.</p><div class="scroll"><table><tr><th>Jenis</th><th>Data</th><th>Dihapus</th><th></th></tr>' +
+      (rows.map(x => x.r).join('') || '<tr><td colspan="4" class="muted">Sampah kosong.</td></tr>') + '</table></div>';
+  }
+  $('auBox').innerHTML = h;
+}
+$('auBox').onclick = async e => {
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  const { act, j, id } = b.dataset;
+  try { if (act === 'pulih') await pulihkan(j, id); if (act === 'perm') await hapusPermanen(j, id); } catch (err) { alert(err.message); }
+  audit();
+};
+const tanpaDel = o => { const c = Object.assign({}, o); delete c.del; delete c.delBy; return c; };
+async function pulihkan(j, id) {
+  if (j === 'nota') {
+    const n = await DB.get('nota', id); if (!n) return;
+    const items = (await DB.allX('item')).filter(i => i.notaId === id && i.delBy === id);
+    await DB.multi(['nota', 'item'], (N, I) => { N.put(tanpaDel(n)); items.forEach(i => I.put(tanpaDel(i))); });
+    await catat('pulihkan', 'nota', id, ringNotaJudul(n), null, { nota: tanpaDel(n), items: items.map(tanpaDel) });
+  } else if (j === 'item') {
+    const i = await DB.get('item', id); if (!i) return;
+    const induk = await DB.get('nota', i.notaId);
+    if (induk && induk.del) throw new Error('Nota induknya masih di Sampah. Pulihkan nota-nya dulu.');
+    await DB.put('item', tanpaDel(i)); await catat('pulihkan', 'item', id, i.nama, null, tanpaDel(i));
+  } else {
+    const u = await DB.get('upah', id); if (!u) return;
+    await DB.put('upah', tanpaDel(u)); await catat('pulihkan', 'upah', id, u.nama + ' · ' + rp(u.total), null, tanpaDel(u));
+  }
+}
+async function hapusPermanen(j, id) {
+  if (!confirm('Hapus permanen? Data ini tidak bisa dipulihkan lagi (catatan di riwayat perubahan tetap ada).')) return;
+  if (j === 'nota') {
+    const n = await DB.get('nota', id); if (!n) return;
+    const items = (await DB.allX('item')).filter(i => i.notaId === id);
+    const dipakaiLain = n.fileId && (await DB.allX('nota')).some(x => x.id !== id && x.fileId === n.fileId);
+    await DB.multi(['nota', 'item', 'file'], (N, I, F) => { N.delete(id); items.forEach(i => I.delete(i.id)); if (n.fileId && !dipakaiLain) F.delete(n.fileId); });
+    await catat('permanen', 'nota', id, ringNotaJudul(n), { nota: tanpaDel(n), items: items.map(tanpaDel) }, null);
+  } else if (j === 'item') {
+    const i = await DB.get('item', id); if (!i) return;
+    await DB.multi(['item'], I => I.delete(id)); await catat('permanen', 'item', id, i.nama, tanpaDel(i), null);
+  } else {
+    const u = await DB.get('upah', id); if (!u) return;
+    await DB.multi(['upah'], U => U.delete(id)); await catat('permanen', 'upah', id, u.nama + ' · ' + rp(u.total), tanpaDel(u), null);
+  }
+}
 
 /* ---------- Dialog berkas siap (Bagikan / Simpan) ---------- */
 function dialogFile(blob, nama, judul) {
@@ -787,6 +1044,16 @@ async function rekapPDF(rinci) {
   const bs = Object.keys(R.bln).sort();
   doc.table([{ h: 'Bulan', w: 150 }, { h: 'Material', w: 120, r: 1 }, { h: 'Upah', w: 120, r: 1 }, { h: 'Total', w: 125, r: 1 }],
     bs.length ? bs.map(k => [bulan(k), n(R.bln[k].m), n(R.bln[k].u), n(R.bln[k].m + R.bln[k].u)]) : [['Belum ada data', '', '', '']]);
+  doc.heading('Pembelian per toko');
+  const pt = {};
+  R.items.forEach(i => {
+    const tk = (notas[i.notaId] || {}).toko || '(tanpa toko)';
+    const T = pt[tk] = pt[tk] || { nota: new Set(), jenis: new Set(), total: 0 };
+    T.nota.add(i.notaId); T.jenis.add(String(i.nama).toLowerCase()); T.total += i.jumlah * i.harga;
+  });
+  const ptk = Object.keys(pt).sort((a, b) => pt[b].total - pt[a].total);
+  doc.table([{ h: 'Toko', w: 200 }, { h: 'Jumlah nota', w: 80, r: 1 }, { h: 'Jenis barang', w: 80, r: 1 }, { h: 'Total belanja', w: 155, r: 1 }],
+    ptk.length ? ptk.map(k => [k, String(pt[k].nota.size), String(pt[k].jenis.size), n(pt[k].total)]) : [['Belum ada data', '', '', '']]);
   if (rinci) {
     const asc = (a, b) => String(a.tanggal).localeCompare(String(b.tanggal));
     doc.heading('Rincian material');
@@ -818,7 +1085,7 @@ $('btnPdf').onclick = async () => {
 (async function init() {
   try {
     await DB.open(); await loadSet();
-    $('uKat').innerHTML = optKat(); $('uTgl').value = hariIni(); hitungU(); cekAI(); rekap(); $('promptBox').value = promptNota(true);
+    $('uKat').innerHTML = optKat(); $('uTgl').value = hariIni(); hitungU(); cekAI(); rekap(); $('promptBox').value = promptNota(true); isiDatalist();
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
   } catch (e) { document.querySelector('main').innerHTML = `<div class="msg bad">Penyimpanan lokal tidak bisa dibuka: ${esc(e.message)}. Jangan gunakan Mode Pribadi (Private Browsing).</div>`; }
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) navigator.serviceWorker.register('sw.js').catch(() => {});
