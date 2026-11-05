@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icon-192.png">
 <title>Biaya Kontrakan</title>
 <style>
-  :root { --b:#1a73e8; --bg:#f6f8fb; --line:#dfe3ea; --ok:#188038; --warn:#b06000; --bad:#c5221f; }
+  :root { --b:#1a73e8; --bg:#f6f8fb; --line:#dfe3ea; --ok:#188038; --warn:#b06000; --bad:#c5221f; --mat:#e8710a; --mat-bg:#fef0e1; --upah:#0f9d8a; --upah-bg:#e0f5f1; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html, body { margin:0; }
   body { font-family:-apple-system, system-ui, "Segoe UI", Arial, sans-serif; background:var(--bg); color:#202124; font-size:15px;
@@ -59,30 +59,69 @@
   details.card > summary { cursor:pointer; list-style:none; } details.card > summary::-webkit-details-marker { display:none; }
   tr.best td { background:#e6f4ea; font-weight:600; }
   .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px; background:#e8f0fe; color:var(--b); }
+  .badge.nota, .badge.item { background:var(--mat-bg); color:var(--mat); } .badge.upah { background:var(--upah-bg); color:var(--upah); }
+  .ic { width:22px; height:22px; flex:none; vertical-align:middle; } .ic.sm { width:18px; height:18px; margin-right:2px; }
+  nav button { display:flex; flex-direction:column; align-items:center; gap:2px; font-size:12px; padding:8px 12px; min-width:70px; }
+  header { display:flex; align-items:center; gap:10px; } header .ic { width:26px; height:26px; }
+  .card.mat { border-top:4px solid var(--mat); } .card.upah { border-top:4px solid var(--upah); } .card.prog { border-top:4px solid var(--b); }
+  .btn.sec.mat { color:var(--mat); border-color:var(--mat); } .btn.sec.mat.on { background:var(--mat); color:#fff; }
+  .btn.sec.upah { color:var(--upah); border-color:var(--upah); } .btn.sec.upah.on { background:var(--upah); color:#fff; }
+  #tM, .tm { color:var(--mat); } #tU, .tu { color:var(--upah); } #tP, #pgTotal { color:var(--b); }
+  tr.m td:first-child { border-left:4px solid var(--mat); } tr.u td:first-child { border-left:4px solid var(--upah); }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:13px; margin:6px 0 4px; } .legend i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
+  .gal { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; } .gal .ph { position:relative; }
+  .gal img { width:96px; height:96px; object-fit:cover; border-radius:8px; border:1px solid var(--line); cursor:pointer; background:#eee; }
+  .gal .ph button { position:absolute; top:-8px; right:-8px; background:#fff; border:1px solid var(--line); border-radius:50%; width:26px; height:26px; color:var(--bad); font-size:13px; }
+  .tl { padding:12px 0; border-bottom:1px solid var(--line); } .badge.pg { background:#e8f0fe; color:var(--b); }
+  #mBody img { max-height:80vh; }
+  #chKat svg, #chBln svg, #chPg svg { max-width:640px; }
   @media (max-width:760px) { .item { grid-template-columns:1fr 1fr; } .item .nama, .item .kat { grid-column:1 / -1; } }
 </style>
 </head>
 <body>
-<header>🏠 Biaya Kontrakan <span style="font-weight:400;font-size:12px;opacity:.8">versi 5</span></header>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-chart" viewBox="0 0 24 24"><rect x="4" y="12" width="4" height="8" rx="1" fill="currentColor"/><rect x="10" y="6" width="4" height="14" rx="1" fill="currentColor"/><rect x="16" y="9" width="4" height="11" rx="1" fill="currentColor"/></symbol>
+  <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.5L14 21l-2-1.5L10 21l-2-1.5L6 21z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 8h6M9 12h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-helm" viewBox="0 0 24 24"><path d="M3 16C3 10.2 6.6 6.5 11 6.5S19 10.2 19 16z" fill="currentColor"/><rect x="1.6" y="16" width="21.4" height="3.4" rx="1.7" fill="currentColor"/><path d="M11 7.2V15.4" stroke="#fff" stroke-opacity=".7" stroke-width="2.2" stroke-linecap="round"/><path d="M6.2 14.2C6.4 11.6 8 9.6 9.4 8.8" stroke="#fff" stroke-opacity=".5" stroke-width="1.4" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="i-brick" viewBox="0 0 24 24"><g fill="currentColor"><rect x="2" y="4.5" width="9.4" height="4.2" rx=".8"/><rect x="12.6" y="4.5" width="9.4" height="4.2" rx=".8"/><rect x="2" y="9.9" width="4.6" height="4.2" rx=".8"/><rect x="7.8" y="9.9" width="8.4" height="4.2" rx=".8"/><rect x="17.4" y="9.9" width="4.6" height="4.2" rx=".8"/><rect x="2" y="15.3" width="9.4" height="4.2" rx=".8"/><rect x="12.6" y="15.3" width="9.4" height="4.2" rx=".8"/></g></symbol>
+  <symbol id="i-build" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V8l7-4 7 4v13"/><path d="M9.5 21v-6h5v6"/><path d="M9 11h1M14 11h1"/><path d="M3 21h18"/></g></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></g></symbol>
+  <symbol id="i-compare" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 20V5M7 5L4 8M7 5l3 3"/><path d="M17 4v15M17 19l-3-3M17 19l3-3"/></g></symbol>
+  <symbol id="i-audit" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></g></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></g></symbol>
+</svg>
+<header><svg class="ic"><use href="#i-helm"/></svg><span>Biaya Kontrakan <span style="font-weight:400;font-size:12px;opacity:.8">versi 6</span></span></header>
 <nav id="nav">
-  <button data-t="rekap" class="on">Rekap</button>
-  <button data-t="nota">Nota</button>
-  <button data-t="upah">Upah</button>
-  <button data-t="riwayat">Riwayat</button>
-  <button data-t="bandingkan">Bandingkan</button>
-  <button data-t="audit">Audit</button>
-  <button data-t="set">Pengaturan</button>
+  <button data-t="rekap" class="on"><svg class="ic" style="color:#5f6368"><use href="#i-chart"/></svg>Rekap</button>
+  <button data-t="nota"><svg class="ic" style="color:var(--mat)"><use href="#i-receipt"/></svg>Nota</button>
+  <button data-t="upah"><svg class="ic" style="color:var(--upah)"><use href="#i-helm"/></svg>Upah</button>
+  <button data-t="progres"><svg class="ic" style="color:var(--b)"><use href="#i-build"/></svg>Progres</button>
+  <button data-t="riwayat"><svg class="ic" style="color:#5f6368"><use href="#i-list"/></svg>Riwayat</button>
+  <button data-t="bandingkan"><svg class="ic" style="color:#5f6368"><use href="#i-compare"/></svg>Bandingkan</button>
+  <button data-t="audit"><svg class="ic" style="color:#5f6368"><use href="#i-audit"/></svg>Audit</button>
+  <button data-t="set"><svg class="ic" style="color:#5f6368"><use href="#i-gear"/></svg>Pengaturan</button>
 </nav>
 <main>
 
 <!-- REKAP -->
 <section id="rekap" class="on">
   <div class="grid">
-    <div class="card"><div class="muted">Total Material</div><div class="big" id="tM">-</div></div>
-    <div class="card"><div class="muted">Total Upah</div><div class="big" id="tU">-</div></div>
+    <div class="card mat"><div class="muted"><svg class="ic sm" style="color:var(--mat)"><use href="#i-brick"/></svg>Total Material</div><div class="big" id="tM">-</div></div>
+    <div class="card upah"><div class="muted"><svg class="ic sm" style="color:var(--upah)"><use href="#i-helm"/></svg>Total Upah Tukang</div><div class="big" id="tU">-</div></div>
     <div class="card"><div class="muted">Total Pengeluaran</div><div class="big" id="tT">-</div></div>
     <div class="card"><div class="muted">Sisa Anggaran</div><div class="big" id="tS">-</div></div>
+    <div class="card prog"><div class="muted"><svg class="ic sm" style="color:var(--b)"><use href="#i-build"/></svg>Progres Bangunan</div><div class="big" id="tP">-</div></div>
   </div>
+  <div class="grid2">
+    <div class="card"><b>Komposisi biaya</b><div id="chDonut"></div></div>
+    <div class="card"><b>Biaya per bulan</b>
+      <div class="legend"><span><i style="background:var(--mat)"></i>Material</span><span><i style="background:var(--upah)"></i>Upah</span></div>
+      <div id="chBln"></div></div>
+  </div>
+  <div class="card"><b>Biaya per kategori</b>
+    <div class="legend"><span><i style="background:var(--mat)"></i>Material</span><span><i style="background:var(--upah)"></i>Upah</span><span><i style="background:#3c4043;height:12px;width:3px"></i>Anggaran</span></div>
+    <div id="chKat"></div></div>
   <div class="card">
     <b>Per kategori</b> <span class="muted">— isi kolom anggaran lalu tekan Simpan</span>
     <div class="scroll"><table id="tblKat"></table></div>
@@ -124,8 +163,8 @@
     <div id="pdfInfo"></div>
   </div>
 
-  <div class="card" id="formNota" style="display:none">
-    <b id="judulNota">2. Periksa &amp; koreksi isi nota</b>
+  <div class="card mat" id="formNota" style="display:none">
+    <svg class="ic sm" style="color:var(--mat)"><use href="#i-brick"/></svg><b id="judulNota">2. Periksa &amp; koreksi isi nota</b>
     <div class="grid" style="margin-top:10px">
       <div><label>Tanggal</label><input type="date" id="nTgl"></div>
       <div><label>Toko / Penjual</label><input id="nToko" list="dlToko" autocomplete="off"></div>
@@ -143,8 +182,8 @@
 
 <!-- UPAH -->
 <section id="upah">
-  <div class="card">
-    <b id="judulUpah">Catat upah tukang</b>
+  <div class="card upah">
+    <svg class="ic sm" style="color:var(--upah)"><use href="#i-helm"/></svg><b id="judulUpah">Catat upah tukang</b>
     <div class="grid" style="margin-top:10px">
       <div><label>Tanggal</label><input type="date" id="uTgl"></div>
       <div><label>Nama tukang</label><input id="uNama"></div>
@@ -163,12 +202,40 @@
 <!-- RIWAYAT -->
 <section id="riwayat">
   <div class="sub-tabs">
-    <button class="btn sec" data-rw="nota">Nota</button>
-    <button class="btn sec" data-rw="item">Material</button>
-    <button class="btn sec" data-rw="upah">Upah</button>
+    <button class="btn sec mat" data-rw="nota"><svg class="ic sm"><use href="#i-receipt"/></svg> Nota</button>
+    <button class="btn sec mat" data-rw="item"><svg class="ic sm"><use href="#i-brick"/></svg> Material</button>
+    <button class="btn sec upah" data-rw="upah"><svg class="ic sm"><use href="#i-helm"/></svg> Upah</button>
   </div>
   <div style="margin-bottom:10px"><input id="rwCari" type="search" placeholder="Cari toko, barang, tukang, kategori, keterangan…"></div>
   <div class="card scroll" id="rwBox"></div>
+</section>
+
+<!-- PROGRES -->
+<section id="progres">
+  <div class="grid">
+    <div class="card prog"><div class="muted"><svg class="ic sm" style="color:var(--b)"><use href="#i-build"/></svg>Progres bangunan</div><div class="big" id="pgTotal">-</div>
+      <div class="bar" style="margin-top:6px"><i id="pgBar" style="width:0"></i></div><div class="muted" id="pgNote" style="margin-top:6px"></div></div>
+  </div>
+  <div class="card"><b>Progres vs biaya per tahap</b>
+    <div class="legend"><span><i style="background:var(--b)"></i>Progres tahap</span><span><i style="background:#9aa0a6"></i>Biaya terpakai (% anggaran)</span><span><i style="background:var(--bad)"></i>Melebihi anggaran</span></div>
+    <div id="chPg"></div></div>
+  <div class="card prog">
+    <svg class="ic sm" style="color:var(--b)"><use href="#i-build"/></svg><b id="judulPg">Catat progres</b>
+    <div class="grid" style="margin-top:10px">
+      <div><label>Tanggal</label><input type="date" id="pgTgl"></div>
+      <div><label>Tahap pekerjaan</label><select id="pgKat"></select></div>
+      <div><label>Progres tahap ini (%)</label><input type="number" inputmode="decimal" min="0" max="100" id="pgPct" placeholder="0 - 100"></div>
+      <div><label>Judul / keterangan</label><input id="pgJudul" placeholder="mis. cor pondasi selesai"></div>
+    </div>
+    <label style="margin-top:10px">Foto kondisi bangunan (bisa lebih dari satu)</label>
+    <input type="file" id="pgFile" accept="image/*" multiple>
+    <div class="gal" id="pgPrev"></div>
+    <p class="row"><button class="btn" id="btnPg">Simpan Progres</button><button class="btn sec" id="btnPgBatal" style="display:none">Batal edit</button><span id="pgMsg"></span></p>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between"><b>Linimasa progres</b><select id="pgFilter" style="width:auto;max-width:200px"></select></div>
+    <div id="pgList"></div>
+  </div>
 </section>
 
 <!-- BANDINGKAN -->
@@ -251,8 +318,8 @@ const DB = {
   db: null,
   async open() {
     this.db = await new Promise((ok, no) => {
-      const r = indexedDB.open('kontrakan', 2);
-      r.onupgradeneeded = () => { ['nota','item','upah','file','kv','log'].forEach(s => { if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s, { keyPath: s === 'kv' ? 'k' : 'id' }); }); };
+      const r = indexedDB.open('kontrakan', 3);
+      r.onupgradeneeded = () => { ['nota','item','upah','file','kv','log','progress'].forEach(s => { if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s, { keyPath: s === 'kv' ? 'k' : 'id' }); }); };
       r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error);
     });
   },
@@ -280,7 +347,7 @@ const saveSet = () => DB.put('kv', { k: 'settings', v: SET });
 function tab(t) {
   document.querySelectorAll('#nav button').forEach(x => x.classList.toggle('on', x.dataset.t === t));
   document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === t));
-  if (t === 'rekap') rekap(); if (t === 'riwayat') riwayat(); if (t === 'set') isiSet(); if (t === 'bandingkan') bandingkan(); if (t === 'audit') audit(); if (t === 'nota') isiDatalist();
+  if (t === 'rekap') rekap(); if (t === 'riwayat') riwayat(); if (t === 'set') isiSet(); if (t === 'bandingkan') bandingkan(); if (t === 'audit') audit(); if (t === 'nota') isiDatalist(); if (t === 'progres') progres();
   window.scrollTo(0, 0);
 }
 document.querySelectorAll('#nav button').forEach(b => b.onclick = () => tab(b.dataset.t));
@@ -304,21 +371,24 @@ async function dataRekap() {
   return { items, upah, per, bln, tm, tu, tot, ta };
 }
 async function rekap() {
-  const { per, bln, tm, tu, tot, ta } = await dataRekap();
+  const R = await dataRekap(), PR = await hitungProgres();
+  const { per, bln, tm, tu, tot, ta } = R;
   $('tM').textContent = rp(tm); $('tU').textContent = rp(tu); $('tT').textContent = rp(tot); $('tS').textContent = ta ? rp(ta - tot) : '-';
-  let h = '<tr><th>Kategori</th><th class="r">Anggaran</th><th class="r">Material</th><th class="r">Upah</th><th class="r">Terpakai</th><th class="r">Sisa</th><th>Progres</th></tr>';
+  $('tP').textContent = PR.total == null ? '-' : Math.round(PR.total) + '%';
+  let h = '<tr><th>Kategori</th><th class="r">Anggaran</th><th class="r tm">Material</th><th class="r tu">Upah</th><th class="r">Terpakai</th><th class="r">Sisa</th><th>Progres biaya</th></tr>';
   Object.keys(per).forEach(k => {
     const a = Number(SET.anggaran[k]) || 0, t = per[k].m + per[k].u, pct = a ? t / a * 100 : 0;
     h += `<tr><td>${esc(k)}</td><td class="r"><input type="number" inputmode="decimal" class="ang" data-k="${esc(k)}" value="${a || ''}" style="width:130px;text-align:right"></td>
-      <td class="r">${rp(per[k].m)}</td><td class="r">${rp(per[k].u)}</td><td class="r"><b>${rp(t)}</b></td>
+      <td class="r tm">${rp(per[k].m)}</td><td class="r tu">${rp(per[k].u)}</td><td class="r"><b>${rp(t)}</b></td>
       <td class="r" style="color:${a && t > a ? 'var(--bad)' : 'inherit'}">${a ? rp(a - t) : '-'}</td>
       <td><div class="bar"><i class="${pct > 100 ? 'over' : ''}" style="width:${Math.min(pct, 100)}%"></i></div></td></tr>`;
   });
   $('tblKat').innerHTML = h;
   const bs = Object.keys(bln).sort();
-  $('tblBln').innerHTML = '<tr><th>Bulan</th><th class="r">Material</th><th class="r">Upah</th><th class="r">Total</th></tr>' +
-    (bs.length ? bs.map(k => `<tr><td>${esc(k)}</td><td class="r">${rp(bln[k].m)}</td><td class="r">${rp(bln[k].u)}</td><td class="r"><b>${rp(bln[k].m + bln[k].u)}</b></td></tr>`).join('')
+  $('tblBln').innerHTML = '<tr><th>Bulan</th><th class="r tm">Material</th><th class="r tu">Upah</th><th class="r">Total</th></tr>' +
+    (bs.length ? bs.map(k => `<tr><td>${esc(k)}</td><td class="r tm">${rp(bln[k].m)}</td><td class="r tu">${rp(bln[k].u)}</td><td class="r"><b>${rp(bln[k].m + bln[k].u)}</b></td></tr>`).join('')
       : '<tr><td colspan="4" class="muted">Belum ada data.</td></tr>');
+  $('chDonut').innerHTML = donutSVG(tm, tu); $('chKat').innerHTML = batangKategori(R); $('chBln').innerHTML = kolomBulan(R);
 }
 async function simpanAng() {
   document.querySelectorAll('.ang').forEach(i => { SET.anggaran[i.dataset.k] = parseFloat(i.value) || 0; });
@@ -579,21 +649,21 @@ async function riwayat() {
   if (rwMode === 'nota') {
     const n = Object.values(nm).filter(t => cocok([t.toko, t.noNota, t.catatan, t.tanggal].join(' '), q)).sort(urut); jml = n.length;
     h = '<table><tr><th>Tanggal</th><th>Toko</th><th>No.</th><th>Keterangan</th><th class="r">Total</th><th></th></tr>' +
-      (n.map(t => `<tr><td>${esc(t.tanggal)}</td><td>${esc(t.toko)}</td><td>${esc(t.noNota)}</td><td class="muted">${esc(t.catatan)}</td><td class="r">${rp(t.total)}</td>
+      (n.map(t => `<tr class="m"><td>${esc(t.tanggal)}</td><td>${esc(t.toko)}</td><td>${esc(t.noNota)}</td><td class="muted">${esc(t.catatan)}</td><td class="r">${rp(t.total)}</td>
         <td style="white-space:nowrap">${t.fileId ? `<button class="ln" data-act="foto" data-id="${esc(t.fileId)}">Foto</button>` : ''}
         <button class="ln" data-act="enota" data-id="${esc(t.id)}">Ubah</button><button class="x" title="Hapus" data-act="dnota" data-id="${esc(t.id)}">🗑</button></td></tr>`).join('')
         || '<tr><td colspan="6" class="muted">Tidak ada data.</td></tr>') + '</table>';
   } else if (rwMode === 'item') {
     const it = (await DB.all('item')).filter(i => cocok([i.nama, (nm[i.notaId] || {}).toko, i.kategori, i.catatan, i.tanggal].join(' '), q)).sort(urut); jml = it.length;
     h = '<table><tr><th>Tanggal</th><th>Toko</th><th>Barang</th><th class="r">Jml</th><th class="r">Harga</th><th class="r">Subtotal</th><th>Kategori</th><th>Keterangan</th><th></th></tr>' +
-      (it.map(i => `<tr><td>${esc(i.tanggal)}</td><td>${esc((nm[i.notaId] || {}).toko)}</td><td>${esc(i.nama)}</td><td class="r">${esc(fmtQ(i.jumlah))} ${esc(i.satuan)}</td>
+      (it.map(i => `<tr class="m"><td>${esc(i.tanggal)}</td><td>${esc((nm[i.notaId] || {}).toko)}</td><td>${esc(i.nama)}</td><td class="r">${esc(fmtQ(i.jumlah))} ${esc(i.satuan)}</td>
         <td class="r">${rp(i.harga)}</td><td class="r">${rp(i.jumlah * i.harga)}</td><td>${esc(i.kategori)}</td><td class="muted">${esc(i.catatan)}</td>
         <td style="white-space:nowrap"><button class="ln" data-act="eitem" data-id="${esc(i.id)}">Ubah</button><button class="x" title="Hapus" data-act="ditem" data-id="${esc(i.id)}">🗑</button></td></tr>`).join('')
         || '<tr><td colspan="9" class="muted">Tidak ada data.</td></tr>') + '</table>';
   } else {
     const u = (await DB.all('upah')).filter(x => cocok([x.nama, x.pekerjaan, x.kategori, x.catatan, x.tanggal].join(' '), q)).sort(urut); jml = u.length;
     h = '<table><tr><th>Tanggal</th><th>Tukang</th><th>Pekerjaan</th><th class="r">Qty</th><th class="r">Tarif</th><th class="r">Total</th><th>Kategori</th><th>Keterangan</th><th></th></tr>' +
-      (u.map(x => `<tr><td>${esc(x.tanggal)}</td><td>${esc(x.nama)}</td><td>${esc(x.pekerjaan)}</td><td class="r">${esc(x.qty)}</td>
+      (u.map(x => `<tr class="u"><td>${esc(x.tanggal)}</td><td>${esc(x.nama)}</td><td>${esc(x.pekerjaan)}</td><td class="r">${esc(x.qty)}</td>
         <td class="r">${rp(x.tarif)}</td><td class="r">${rp(x.total)}</td><td>${esc(x.kategori)}</td><td class="muted">${esc(x.catatan)}</td>
         <td style="white-space:nowrap"><button class="ln" data-act="eupah" data-id="${esc(x.id)}">Ubah</button><button class="x" title="Hapus" data-act="dupah" data-id="${esc(x.id)}">🗑</button></td></tr>`).join('')
         || '<tr><td colspan="9" class="muted">Tidak ada data.</td></tr>') + '</table>';
@@ -684,7 +754,7 @@ async function simpanSetForm() {
   SET.geminiModel = $('sGM').value.trim(); SET.claudeModel = $('sCM').value.trim();
   const k = $('sKat').value.split('\n').map(s => s.trim()).filter(Boolean);
   SET.kategori = k.length ? k : KAT_DEF.slice();
-  await saveSet(); cekAI(); $('uKat').innerHTML = optKat();
+  await saveSet(); cekAI(); $('uKat').innerHTML = optKat(); isiKatPg();
   $('sMsg').innerHTML = '<span style="color:var(--ok)">Tersimpan ✓</span>'; setTimeout(() => { $('sMsg').innerHTML = ''; }, 2500);
 }
 $('btnSet').onclick = simpanSetForm;
@@ -712,8 +782,8 @@ $('btnEkspor').onclick = async () => {
   $('bMsg').innerHTML = '<div class="msg info">Menyiapkan cadangan…</div>';
   try {
     const files = await DB.all('file');
-    const data = { versi: 2, tanggal: new Date().toISOString(), nota: await DB.allX('nota'), item: await DB.allX('item'), upah: await DB.allX('upah'), log: await DB.all('log'),
-      file: await Promise.all(files.map(async f => ({ id: f.id, mime: f.mime, name: f.name, data: await b64(f.blob) }))),
+    const data = { versi: 3, progress: await DB.allX('progress'), tanggal: new Date().toISOString(), nota: await DB.allX('nota'), item: await DB.allX('item'), upah: await DB.allX('upah'), log: await DB.all('log'),
+      file: await Promise.all(files.map(async f => ({ id: f.id, mime: f.mime, name: f.name, data: await b64(f.blob), thumb: f.thumb ? await b64(f.thumb) : null }))),
       pengaturan: { kategori: SET.kategori, anggaran: SET.anggaran } };
     $('bMsg').innerHTML = '';
     dialogFile(new Blob([JSON.stringify(data)], { type: 'application/json' }), 'cadangan-kontrakan-' + hariIni() + '.json', 'Cadangan siap');
@@ -740,11 +810,11 @@ $('fImpor').onchange = async e => {
     if (!d.nota || !d.item || !d.upah) throw new Error('Berkas bukan cadangan aplikasi ini.');
     if (!confirm('Ganti SEMUA data di iPad ini dengan isi cadangan?')) { e.target.value = ''; return; }
     const blobOf = x => { const bin = atob(x.data), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type: x.mime }); };
-    const [oN, oI, oU, oF, oL] = await Promise.all(['nota', 'item', 'upah', 'file', 'log'].map(x => DB.allX(x)));
-    await DB.multi(['nota', 'item', 'upah', 'file', 'log'], (N, I, U, F, L) => {
-      oN.forEach(x => N.delete(x.id)); oI.forEach(x => I.delete(x.id)); oU.forEach(x => U.delete(x.id)); oF.forEach(x => F.delete(x.id)); oL.forEach(x => L.delete(x.id));
-      d.nota.forEach(x => N.put(x)); d.item.forEach(x => I.put(x)); d.upah.forEach(x => U.put(x)); (d.log || []).forEach(x => L.put(x));
-      (d.file || []).forEach(x => F.put({ id: x.id, mime: x.mime, name: x.name, blob: blobOf(x) }));
+    const [oN, oI, oU, oF, oL, oP] = await Promise.all(['nota', 'item', 'upah', 'file', 'log', 'progress'].map(x => DB.allX(x)));
+    await DB.multi(['nota', 'item', 'upah', 'file', 'log', 'progress'], (N, I, U, F, L, P) => {
+      oN.forEach(x => N.delete(x.id)); oI.forEach(x => I.delete(x.id)); oU.forEach(x => U.delete(x.id)); oF.forEach(x => F.delete(x.id)); oL.forEach(x => L.delete(x.id)); oP.forEach(x => P.delete(x.id));
+      d.nota.forEach(x => N.put(x)); d.item.forEach(x => I.put(x)); d.upah.forEach(x => U.put(x)); (d.log || []).forEach(x => L.put(x)); (d.progress || []).forEach(x => P.put(x));
+      (d.file || []).forEach(x => F.put({ id: x.id, mime: x.mime, name: x.name, blob: blobOf(x), thumb: x.thumb ? blobOf({ data: x.thumb, mime: 'image/jpeg' }) : undefined }));
     });
     if (d.pengaturan) { SET.kategori = d.pengaturan.kategori || SET.kategori; SET.anggaran = d.pengaturan.anggaran || SET.anggaran; await saveSet(); }
     $('bMsg').innerHTML = '<div class="msg ok">Data berhasil dipulihkan ✓</div>'; isiSet(); $('uKat').innerHTML = optKat();
@@ -827,15 +897,17 @@ async function bandingkan() {
 }
 
 const NAMA_FIELD = { tanggal: 'Tanggal', nama: 'Nama', jumlah: 'Jumlah', satuan: 'Satuan', harga: 'Harga', kategori: 'Kategori', catatan: 'Keterangan', toko: 'Toko',
-  noNota: 'No. nota', total: 'Total', qty: 'Qty', tarif: 'Tarif', pekerjaan: 'Pekerjaan' };
+  noNota: 'No. nota', total: 'Total', qty: 'Qty', tarif: 'Tarif', pekerjaan: 'Pekerjaan', persen: 'Progres (%)', judul: 'Keterangan' };
 function diffObj(a, b) {
   const v = x => (x === undefined || x === null || x === '') ? '(kosong)' : String(x);
-  const skip = { id: 1, del: 1, delBy: 1, notaId: 1, fileId: 1 }, out = [];
+  const skip = { id: 1, del: 1, delBy: 1, notaId: 1, fileId: 1, fotos: 1, dibuat: 1 }, out = [];
   new Set(Object.keys(a || {}).concat(Object.keys(b || {}))).forEach(k => {
     if (skip[k]) return;
     const x = a ? a[k] : undefined, y = b ? b[k] : undefined;
     if (String(x == null ? '' : x) !== String(y == null ? '' : y)) out.push((NAMA_FIELD[k] || k) + ': ' + v(x) + ' → ' + v(y));
   });
+  const fa = ((a && a.fotos) || []).length, fb = ((b && b.fotos) || []).length;
+  if (fa !== fb) out.push('Foto: ' + fa + ' → ' + fb);
   return out;
 }
 function ringkasSnap(sn) {
@@ -866,16 +938,17 @@ async function audit() {
     const logs = (await DB.all('log')).sort((a, b) => String(b.waktu).localeCompare(String(a.waktu)));
     h = '<p class="muted">Semua penambahan, perubahan, dan penghapusan tercatat di sini sebagai bahan pemeriksaan. Menampilkan hingga 300 catatan terbaru.</p>' +
       (logs.length ? logs.slice(0, 300).map(l => `<div style="padding:10px 0;border-bottom:1px solid var(--line)">
-        <div class="row" style="justify-content:space-between"><span><span class="badge">${esc(AKSI[l.aksi] || l.aksi)}</span> <b>${esc(l.jenis)}</b> — ${esc(l.ringkas)}</span><span class="muted">${esc(new Date(l.waktu).toLocaleString('id-ID'))}</span></div>${detailLog(l)}</div>`).join('')
+        <div class="row" style="justify-content:space-between"><span><span class="badge ${esc(l.jenis)}">${esc(AKSI[l.aksi] || l.aksi)}</span> <b>${esc(l.jenis)}</b> — ${esc(l.ringkas)}</span><span class="muted">${esc(new Date(l.waktu).toLocaleString('id-ID'))}</span></div>${detailLog(l)}</div>`).join('')
         : '<p class="muted">Belum ada perubahan tercatat.</p>');
   } else {
-    const [N, I, U] = await Promise.all([DB.allX('nota'), DB.allX('item'), DB.allX('upah')]);
+    const [N, I, U, P] = await Promise.all([DB.allX('nota'), DB.allX('item'), DB.allX('upah'), DB.allX('progress')]);
     const tk = (j, id, judul, ts) => `<tr><td>${j}</td><td>${esc(judul)}</td><td>${esc(new Date(ts).toLocaleDateString('id-ID'))}</td>
       <td style="white-space:nowrap"><button class="ln" data-act="pulih" data-j="${j}" data-id="${esc(id)}">Pulihkan</button><button class="x" title="Hapus permanen" data-act="perm" data-j="${j}" data-id="${esc(id)}">🗑</button></td></tr>`;
     const rows = []
       .concat(N.filter(x => x.del).map(n => ({ ts: n.del, r: tk('nota', n.id, ringNotaJudul(n) + ' (' + I.filter(i => i.notaId === n.id && i.delBy === n.id).length + ' barang)', n.del) })))
       .concat(I.filter(x => x.del && !x.delBy).map(i => ({ ts: i.del, r: tk('item', i.id, i.nama + ' · ' + rp(i.jumlah * i.harga), i.del) })))
       .concat(U.filter(x => x.del).map(u => ({ ts: u.del, r: tk('upah', u.id, u.nama + ' · ' + rp(u.total), u.del) })))
+      .concat(P.filter(x => x.del).map(q => ({ ts: q.del, r: tk('progres', q.id, q.kategori + ' ' + q.persen + '% ' + (q.judul || '') + ' (' + (q.fotos || []).length + ' foto)', q.del) })))
       .sort((a, b) => b.ts - a.ts);
     h = '<p class="muted">Data yang dihapus tidak ikut dihitung di rekap. Pulihkan jika salah hapus, atau hapus permanen jika yakin.</p><div class="scroll"><table><tr><th>Jenis</th><th>Data</th><th>Dihapus</th><th></th></tr>' +
       (rows.map(x => x.r).join('') || '<tr><td colspan="4" class="muted">Sampah kosong.</td></tr>') + '</table></div>';
@@ -900,6 +973,9 @@ async function pulihkan(j, id) {
     const induk = await DB.get('nota', i.notaId);
     if (induk && induk.del) throw new Error('Nota induknya masih di Sampah. Pulihkan nota-nya dulu.');
     await DB.put('item', tanpaDel(i)); await catat('pulihkan', 'item', id, i.nama, null, tanpaDel(i));
+  } else if (j === 'progres') {
+    const q = await DB.get('progress', id); if (!q) return;
+    await DB.put('progress', tanpaDel(q)); await catat('pulihkan', 'progres', id, q.kategori + ' ' + q.persen + '%', null, tanpaDel(q));
   } else {
     const u = await DB.get('upah', id); if (!u) return;
     await DB.put('upah', tanpaDel(u)); await catat('pulihkan', 'upah', id, u.nama + ' · ' + rp(u.total), null, tanpaDel(u));
@@ -916,10 +992,222 @@ async function hapusPermanen(j, id) {
   } else if (j === 'item') {
     const i = await DB.get('item', id); if (!i) return;
     await DB.multi(['item'], I => I.delete(id)); await catat('permanen', 'item', id, i.nama, tanpaDel(i), null);
+  } else if (j === 'progres') {
+    const q = await DB.get('progress', id); if (!q) return;
+    await DB.multi(['progress', 'file'], (P, F) => { P.delete(id); (q.fotos || []).forEach(f => F.delete(f)); });
+    await catat('permanen', 'progres', id, q.kategori + ' ' + q.persen + '%', tanpaDel(q), null);
   } else {
     const u = await DB.get('upah', id); if (!u) return;
     await DB.multi(['upah'], U => U.delete(id)); await catat('permanen', 'upah', id, u.nama + ' · ' + rp(u.total), tanpaDel(u), null);
   }
+}
+
+/* ---------- Grafik sederhana (SVG, tanpa library) ---------- */
+const C_MAT = '#e8710a', C_UPAH = '#0f9d8a', C_PG = '#1a73e8', C_ANG = '#3c4043';
+const jt = n => {
+  n = Number(n) || 0; const a = Math.abs(n), sg = n < 0 ? '-' : '';
+  if (a >= 1e9) return sg + (a / 1e9).toFixed(1).replace('.', ',') + ' M';
+  if (a >= 1e6) return sg + (a / 1e6).toFixed(1).replace('.', ',') + ' jt';
+  if (a >= 1e3) return sg + Math.round(a / 1e3) + ' rb';
+  return sg + Math.round(a);
+};
+const potong = (t, n) => { t = String(t); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
+const SVGF = 'font-family="-apple-system,system-ui,Arial,sans-serif"';
+function donutSVG(tm, tu) {
+  const t = tm + tu;
+  if (!t) return '<div class="muted" style="padding:16px 0">Belum ada pengeluaran.</div>';
+  const pm = tm / t * 100, pu = 100 - pm;
+  return `<svg viewBox="0 0 42 42" ${SVGF} style="width:100%;max-width:230px;display:block;margin:8px auto">
+    <circle cx="21" cy="21" r="15.9155" fill="none" stroke="${C_MAT}" stroke-width="6" stroke-dasharray="${pm} ${100 - pm}" stroke-dashoffset="25"/>
+    <circle cx="21" cy="21" r="15.9155" fill="none" stroke="${C_UPAH}" stroke-width="6" stroke-dasharray="${pu} ${100 - pu}" stroke-dashoffset="${25 - pm}"/>
+    <text x="21" y="20.5" text-anchor="middle" font-size="4.4" font-weight="700" fill="#202124">${esc(jt(t))}</text>
+    <text x="21" y="25.5" text-anchor="middle" font-size="2.6" fill="#5f6368">total biaya</text></svg>
+    <div class="row" style="justify-content:center;gap:18px"><span style="color:${C_MAT}"><b>${Math.round(pm)}%</b> material (${esc(jt(tm))})</span><span style="color:${C_UPAH}"><b>${Math.round(pu)}%</b> upah (${esc(jt(tu))})</span></div>`;
+}
+function batangKategori(R) {
+  const rows = Object.keys(R.per).map(k => ({ k, m: R.per[k].m, u: R.per[k].u, a: Number(SET.anggaran[k]) || 0 }))
+    .filter(r => r.m + r.u > 0 || r.a > 0).sort((a, b) => (b.m + b.u) - (a.m + a.u));
+  if (!rows.length) return '<div class="muted">Belum ada data.</div>';
+  const W = 480, L = 120, Wb = 290, rh = 28, mx = Math.max.apply(null, rows.map(r => Math.max(r.m + r.u, r.a)).concat([1])), H = rows.length * rh + 6;
+  let o = `<svg viewBox="0 0 ${W} ${H}" ${SVGF} style="width:100%;height:auto;display:block">`;
+  rows.forEach((r, i) => {
+    const y = i * rh + 4, wm = r.m / mx * Wb, wu = r.u / mx * Wb;
+    o += `<text x="0" y="${y + 15}" font-size="11.5" fill="#202124">${esc(potong(r.k, 19))}</text>`;
+    o += `<rect x="${L}" y="${y + 3}" width="${wm}" height="16" fill="${C_MAT}"/><rect x="${L + wm}" y="${y + 3}" width="${wu}" height="16" fill="${C_UPAH}"/>`;
+    o += `<text x="${L + wm + wu + 5}" y="${y + 15}" font-size="11" font-weight="600" fill="#202124">${esc(jt(r.m + r.u))}</text>`;
+    if (r.a > 0) { const xa = L + r.a / mx * Wb; o += `<line x1="${xa}" x2="${xa}" y1="${y}" y2="${y + 22}" stroke="${C_ANG}" stroke-width="2.5"/>`; }
+  });
+  return o + '</svg>';
+}
+function kolomBulan(R) {
+  const ks = Object.keys(R.bln).filter(k => /^\d{4}-\d{2}$/.test(k)).sort().slice(-12);
+  if (!ks.length) return '<div class="muted">Belum ada data.</div>';
+  const W = 480, H = 220, pl = 6, pb = 36, pt = 22, n = ks.length, slot = (W - pl * 2) / n, bw = Math.min(44, slot * 0.62);
+  const mx = Math.max.apply(null, ks.map(k => R.bln[k].m + R.bln[k].u).concat([1])), ch = H - pb - pt, yb = H - pb;
+  const BL = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  let o = `<svg viewBox="0 0 ${W} ${H}" ${SVGF} style="width:100%;height:auto;display:block"><line x1="0" x2="${W}" y1="${yb}" y2="${yb}" stroke="#dfe3ea"/>`;
+  ks.forEach((k, i) => {
+    const m = R.bln[k].m, u = R.bln[k].u, x = pl + i * slot + (slot - bw) / 2, hm = m / mx * ch, hu = u / mx * ch;
+    o += `<rect x="${x}" y="${yb - hm}" width="${bw}" height="${hm}" fill="${C_MAT}"/><rect x="${x}" y="${yb - hm - hu}" width="${bw}" height="${hu}" fill="${C_UPAH}"/>`;
+    o += `<text x="${x + bw / 2}" y="${yb - hm - hu - 5}" text-anchor="middle" font-size="10.5" font-weight="600" fill="#202124">${esc(jt(m + u))}</text>`;
+    o += `<text x="${x + bw / 2}" y="${yb + 14}" text-anchor="middle" font-size="10.5" fill="#5f6368">${BL[+k.slice(5) - 1]}</text><text x="${x + bw / 2}" y="${yb + 26}" text-anchor="middle" font-size="9.5" fill="#9aa0a6">${k.slice(2, 4)}</text>`;
+  });
+  return o + '</svg>';
+}
+function batangProgres(R, PR) {
+  const cats = new Set(Object.keys(PR.last));
+  Object.keys(R.per).forEach(k => { if ((Number(SET.anggaran[k]) || 0) > 0) cats.add(k); });
+  const rows = Array.from(cats);
+  if (!rows.length) return '<div class="muted">Belum ada catatan progres atau anggaran.</div>';
+  const W = 480, L = 120, Wb = 290, rh = 40, H = rows.length * rh + 6;
+  let o = `<svg viewBox="0 0 ${W} ${H}" ${SVGF} style="width:100%;height:auto;display:block">`;
+  rows.forEach((k, i) => {
+    const y = i * rh + 4, pg = PR.last[k] ? PR.last[k].persen : 0, a = Number(SET.anggaran[k]) || 0, per = R.per[k] || { m: 0, u: 0 }, bp = a ? (per.m + per.u) / a * 100 : null;
+    o += `<text x="0" y="${y + 17}" font-size="11.5" fill="#202124">${esc(potong(k, 19))}</text>`;
+    o += `<rect x="${L}" y="${y + 2}" width="${Wb}" height="14" fill="#eef0f3"/><rect x="${L}" y="${y + 2}" width="${Math.min(pg, 100) / 100 * Wb}" height="14" fill="${C_PG}"/>`;
+    o += `<text x="${L + Wb + 6}" y="${y + 13.5}" font-size="11" font-weight="700" fill="${C_PG}">${Math.round(pg)}%</text>`;
+    if (bp !== null) {
+      o += `<rect x="${L}" y="${y + 20}" width="${Wb}" height="10" fill="#eef0f3"/><rect x="${L}" y="${y + 20}" width="${Math.min(bp, 100) / 100 * Wb}" height="10" fill="${bp > 100 ? '#c5221f' : '#9aa0a6'}"/>`;
+      o += `<text x="${L + Wb + 6}" y="${y + 29}" font-size="10.5" fill="${bp > 100 ? '#c5221f' : '#5f6368'}">${Math.round(bp)}%</text>`;
+    } else o += `<text x="${L}" y="${y + 29}" font-size="10" fill="#9aa0a6">anggaran belum diisi</text>`;
+  });
+  return o + '</svg>';
+}
+
+/* ---------- Progres bangunan (dengan foto) ---------- */
+let PG = { editId: null, fotos: [] }, pgLimit = 15, pgMap = {}; const tlUrls = [];
+async function kecilkan(src, maxPx, q) {
+  const url = URL.createObjectURL(src);
+  try {
+    const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error('File bukan gambar yang bisa dibaca.')); i.src = url; });
+    const sc = Math.min(1, maxPx / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.naturalWidth * sc)); c.height = Math.max(1, Math.round(img.naturalHeight * sc));
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise(ok => c.toBlob(ok, 'image/jpeg', q));
+  } finally { URL.revokeObjectURL(url); }
+}
+async function hitungProgres() {
+  const list = await DB.all('progress'), last = {};
+  list.forEach(p => {
+    const c = last[p.kategori];
+    if (!c || String(p.tanggal) > String(c.tanggal) || (String(p.tanggal) === String(c.tanggal) && (p.dibuat || 0) >= (c.dibuat || 0))) last[p.kategori] = p;
+  });
+  const cats = new Set(Object.keys(last));
+  Object.keys(SET.anggaran || {}).forEach(k => { if (Number(SET.anggaran[k]) > 0) cats.add(k); });
+  const arr = Array.from(cats);
+  return { last, list, n: arr.length, total: arr.length ? arr.reduce((a, k) => a + (last[k] ? Number(last[k].persen) || 0 : 0), 0) / arr.length : null };
+}
+function isiKatPg() {
+  const v = $('pgKat').value, f = $('pgFilter').value;
+  $('pgKat').innerHTML = optKat(v);
+  $('pgFilter').innerHTML = '<option value="">Semua tahap</option>' + SET.kategori.map(k => `<option${k === f ? ' selected' : ''}>${esc(k)}</option>`).join('');
+}
+function renderPrev() {
+  $('pgPrev').innerHTML = PG.fotos.map((f, i) => `<div class="ph"><img src="${f.url}" alt="Foto ${i + 1}"><button data-rm="${i}" title="Buang foto">✕</button></div>`).join('');
+}
+function resetPg() {
+  PG.fotos.forEach(f => { if (f.url) URL.revokeObjectURL(f.url); });
+  PG = { editId: null, fotos: [] };
+  isiKatPg(); $('pgTgl').value = hariIni(); $('pgPct').value = ''; $('pgJudul').value = ''; $('pgFile').value = '';
+  $('judulPg').textContent = 'Catat progres'; $('btnPgBatal').style.display = 'none'; renderPrev();
+}
+$('pgPrev').onclick = e => {
+  const b = e.target.closest('button[data-rm]'); if (!b) return;
+  const f = PG.fotos.splice(+b.dataset.rm, 1)[0]; if (f && f.url) URL.revokeObjectURL(f.url); renderPrev();
+};
+$('pgFile').onchange = async e => {
+  const files = Array.from(e.target.files); if (!files.length) return;
+  $('pgMsg').innerHTML = '<span class="muted">Memproses foto…</span>';
+  try {
+    for (const f of files) {
+      const blob = await kecilkan(f, 1600, 0.8), thumb = await kecilkan(blob, 360, 0.7);
+      PG.fotos.push({ id: uid('f'), blob, thumb, mime: 'image/jpeg', name: f.name, baru: true, url: URL.createObjectURL(thumb) });
+    }
+    renderPrev(); $('pgMsg').innerHTML = '';
+  } catch (err) { $('pgMsg').innerHTML = `<span style="color:var(--bad)">${esc(err.message)}</span>`; }
+  e.target.value = '';
+};
+$('btnPgBatal').onclick = resetPg;
+$('pgFilter').onchange = () => progres();
+$('btnPg').onclick = async () => {
+  const persen = parseFloat($('pgPct').value);
+  if (isNaN(persen) || persen < 0 || persen > 100) return alert('Isi persen progres antara 0 dan 100.');
+  const id = PG.editId || uid('p'), lama = PG.editId ? await DB.get('progress', id) : null;
+  const baru = { id, tanggal: $('pgTgl').value || hariIni(), kategori: $('pgKat').value, persen, judul: $('pgJudul').value.trim(), fotos: PG.fotos.map(f => f.id), dibuat: lama ? (lama.dibuat || Date.now()) : Date.now() };
+  const buang = lama ? (lama.fotos || []).filter(x => baru.fotos.indexOf(x) < 0) : [];
+  $('btnPg').disabled = true;
+  try {
+    await DB.multi(['progress', 'file'], (P, F) => {
+      PG.fotos.filter(f => f.baru).forEach(f => F.put({ id: f.id, blob: f.blob, thumb: f.thumb, mime: f.mime, name: f.name }));
+      buang.forEach(x => F.delete(x)); P.put(baru);
+    });
+    await catat(lama ? 'ubah' : 'tambah', 'progres', id, baru.kategori + ' ' + baru.persen + '%' + (baru.judul ? ' · ' + baru.judul : ''), lama, baru);
+    resetPg(); $('pgMsg').innerHTML = '<span style="color:var(--ok)">Tersimpan ✓</span>'; setTimeout(() => { $('pgMsg').innerHTML = ''; }, 2500);
+    progres();
+  } catch (e) { alert('Gagal menyimpan: ' + e.message); }
+  $('btnPg').disabled = false;
+};
+async function progres() {
+  isiKatPg();
+  const R = await dataRekap(), PR = await hitungProgres();
+  $('pgTotal').textContent = PR.total == null ? '-' : Math.round(PR.total) + '%';
+  $('pgBar').style.width = (PR.total || 0) + '%';
+  $('pgNote').textContent = PR.n ? 'Rata-rata dari ' + PR.n + ' tahap (tahap yang punya anggaran tapi belum ada catatan progres dihitung 0%).' : 'Belum ada catatan progres.';
+  $('chPg').innerHTML = batangProgres(R, PR);
+  await renderTimeline(PR.list);
+}
+async function renderTimeline(list) {
+  const f = $('pgFilter').value;
+  const arr = list.filter(p => !f || p.kategori === f).sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)) || (b.dibuat || 0) - (a.dibuat || 0));
+  const show = arr.slice(0, pgLimit); pgMap = {}; show.forEach(p => { pgMap[p.id] = p; });
+  const ids = Array.from(new Set(show.reduce((a, p) => a.concat(p.fotos || []), []))), recs = {};
+  await Promise.all(ids.map(async id => { recs[id] = await DB.get('file', id); }));
+  tlUrls.splice(0).forEach(u => URL.revokeObjectURL(u));
+  const url = id => { const r = recs[id]; if (!r) return ''; const u = URL.createObjectURL(r.thumb || r.blob); tlUrls.push(u); return u; };
+  const item = p => {
+    const fotos = (p.fotos || []).map((fid, i) => recs[fid] ? `<img src="${url(fid)}" data-pg="${esc(p.id)}" data-i="${i}" alt="Foto progres">` : '').join('');
+    return `<div class="tl"><div class="row" style="justify-content:space-between"><span><span class="badge pg">${esc(p.kategori)}</span> <b>${esc(p.persen)}%</b>${p.judul ? ' — ' + esc(p.judul) : ''}</span><span class="muted">${esc(fmtTgl(p.tanggal))}</span></div>
+      <div class="bar" style="margin:8px 0"><i style="width:${Math.min(100, Number(p.persen) || 0)}%"></i></div>
+      ${fotos ? '<div class="gal">' + fotos + '</div>' : ''}
+      <div class="row"><button class="ln" data-act="epg" data-id="${esc(p.id)}">Ubah</button><button class="x" title="Hapus" data-act="dpg" data-id="${esc(p.id)}">🗑</button></div></div>`;
+  };
+  $('pgList').innerHTML = (show.length ? show.map(item).join('') : '<p class="muted">Belum ada catatan progres. Catat progres pertama di atas, lengkap dengan foto bangunan.</p>') +
+    (arr.length > show.length ? '<p><button class="btn sec" id="pgMore">Tampilkan lebih banyak</button></p>' : '');
+}
+async function bukaFoto(ids, idx) {
+  const f = await DB.get('file', ids[idx]); if (!f) return;
+  if (modalUrl) URL.revokeObjectURL(modalUrl);
+  modalUrl = URL.createObjectURL(f.blob);
+  $('mBody').innerHTML = `<img src="${modalUrl}" alt="Foto progres"><div class="row" style="justify-content:center;margin-top:12px"><button class="btn sec" id="fPrev" style="background:#fff">‹</button><span style="color:#fff">${idx + 1} / ${ids.length}</span><button class="btn sec" id="fNext" style="background:#fff">›</button></div>`;
+  $('fPrev').onclick = () => bukaFoto(ids, (idx - 1 + ids.length) % ids.length);
+  $('fNext').onclick = () => bukaFoto(ids, (idx + 1) % ids.length);
+  $('modal').classList.add('on');
+}
+$('pgList').onclick = async e => {
+  const im = e.target.closest('img[data-pg]');
+  if (im) { const p = pgMap[im.dataset.pg]; if (p) bukaFoto(p.fotos, +im.dataset.i); return; }
+  if (e.target.id === 'pgMore') { pgLimit += 15; return progres(); }
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  if (b.dataset.act === 'epg') return editPg(b.dataset.id);
+  if (b.dataset.act === 'dpg') return hapusPg(b.dataset.id);
+};
+async function editPg(id) {
+  const p = await DB.get('progress', id); if (!p) return;
+  resetPg(); PG.editId = id;
+  for (const fid of (p.fotos || [])) {
+    const r = await DB.get('file', fid);
+    if (r) PG.fotos.push({ id: fid, blob: r.blob, thumb: r.thumb, mime: r.mime, name: r.name, baru: false, url: URL.createObjectURL(r.thumb || r.blob) });
+  }
+  $('pgTgl').value = p.tanggal; $('pgKat').innerHTML = optKat(p.kategori); $('pgPct').value = p.persen; $('pgJudul').value = p.judul || '';
+  $('judulPg').textContent = 'Ubah progres'; $('btnPgBatal').style.display = ''; renderPrev();
+  $('pgTgl').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+async function hapusPg(id) {
+  const p = await DB.get('progress', id); if (!p) return;
+  if (!confirm('Pindahkan catatan progres ini ke Sampah? Foto ikut disimpan dan bisa dipulihkan dari tab Audit.')) return;
+  await DB.put('progress', Object.assign({}, p, { del: Date.now() }));
+  await catat('hapus', 'progres', id, p.kategori + ' ' + p.persen + '%' + (p.judul ? ' · ' + p.judul : ''), p, null);
+  progres();
 }
 
 /* ---------- Dialog berkas siap (Bagikan / Simpan) ---------- */
@@ -967,25 +1255,25 @@ function PdfDoc() {
     sub(s) { d.text(s, M, y + 10, 9, false, [0.4, 0.4, 0.4]); y += 22; },
     heading(s) { if (d.ensure(60)) { /* halaman baru */ } y += 8; d.text(s, M, y + 12, 12, true); y += 22; },
     kv(rows) {
-      rows.forEach(r => { d.ensure(16); d.text(r[0], M, y + 11, 10, false); d.text(r[1], M + 140, y + 11, 10, true); y += 15; });
+      rows.forEach(r => { d.ensure(16); d.text(r[0], M, y + 11, 10, false); d.text(r[1], M + 140, y + 11, 10, true, r[2]); y += 15; });
       y += 6;
     },
     table(cols, rows) {
       const sz = 8.5, rh = 16, tot = cols.reduce((a, c) => a + c.w, 0);
-      const cell = (s, x, w, b, right) => {
+      const cell = (s, x, w, b, right, col) => {
         const t = fit(s, w - 8, sz, b);
-        d.text(t, right ? x + w - 4 - tw(t, sz, b) : x + 4, y + 11, sz, b);
+        d.text(t, right ? x + w - 4 - tw(t, sz, b) : x + 4, y + 11, sz, b, col);
       };
       const header = () => {
         d.rect(M, y, tot, rh, [0.91, 0.94, 0.99]);
-        let x = M; cols.forEach(c => { cell(c.h, x, c.w, true, c.r); x += c.w; }); y += rh;
+        let x = M; cols.forEach(c => { cell(c.h, x, c.w, true, c.r, c.col); x += c.w; }); y += rh;
       };
       d.ensure(rh * 2); header();
       rows.forEach(r => {
         const cells = Array.isArray(r) ? r : r.c, bold = !Array.isArray(r) && r.b;
         if (d.ensure(rh)) header();
         if (bold) d.rect(M, y, tot, rh, [0.96, 0.96, 0.96]);
-        let x = M; cells.forEach((s, i) => { cell(s, x, cols[i].w, bold, cols[i].r); x += cols[i].w; });
+        let x = M; cells.forEach((s, i) => { cell(s, x, cols[i].w, bold, cols[i].r, cols[i].col); x += cols[i].w; });
         d.line(M, y + rh, M + tot, y + rh, [0.85, 0.85, 0.85], 0.5); y += rh;
       });
       y += 6;
@@ -1027,10 +1315,11 @@ async function rekapPDF(rinci) {
   const q = x => String(Math.round((Number(x) || 0) * 100) / 100).replace('.', ',');
   const tgl = t => /^\d{4}-\d{2}-\d{2}$/.test(t) ? t.slice(8) + '-' + t.slice(5, 7) + '-' + t.slice(0, 4) : (t || '-');
   const bulan = k => /^\d{4}-\d{2}$/.test(k) ? new Date(+k.slice(0, 4), +k.slice(5) - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) : '-';
+  const cM = [0.91, 0.44, 0.04], cU = [0.06, 0.62, 0.54];
   const doc = PdfDoc(); doc.newPage();
   doc.title('Rekap Biaya Pembangunan Rumah Kontrakan');
   doc.sub('Dicetak ' + new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + '  |  Semua angka dalam Rupiah');
-  doc.kv([['Total material', rp(R.tm)], ['Total upah', rp(R.tu)], ['Total pengeluaran', rp(R.tot)],
+  doc.kv([['Total material', rp(R.tm), cM], ['Total upah', rp(R.tu), cU], ['Total pengeluaran', rp(R.tot)],
     ['Total anggaran', R.ta ? rp(R.ta) : '-'], ['Sisa anggaran', R.ta ? rp(R.ta - R.tot) : '-']]);
   doc.heading('Rekap per kategori');
   const rows = Object.keys(R.per).map(k => {
@@ -1038,12 +1327,21 @@ async function rekapPDF(rinci) {
     return [k, a ? n(a) : '-', n(R.per[k].m), n(R.per[k].u), n(t), a ? n(a - t) : '-', a ? Math.round(t / a * 100) + '%' : '-'];
   });
   rows.push({ b: true, c: ['TOTAL', R.ta ? n(R.ta) : '-', n(R.tm), n(R.tu), n(R.tot), R.ta ? n(R.ta - R.tot) : '-', R.ta ? Math.round(R.tot / R.ta * 100) + '%' : '-'] });
-  doc.table([{ h: 'Kategori', w: 135 }, { h: 'Anggaran', w: 62, r: 1 }, { h: 'Material', w: 68, r: 1 }, { h: 'Upah', w: 62, r: 1 },
+  doc.table([{ h: 'Kategori', w: 135 }, { h: 'Anggaran', w: 62, r: 1 }, { h: 'Material', w: 68, r: 1, col: cM }, { h: 'Upah', w: 62, r: 1, col: cU },
     { h: 'Terpakai', w: 68, r: 1 }, { h: 'Sisa', w: 70, r: 1 }, { h: '%', w: 50, r: 1 }], rows);
   doc.heading('Rekap per bulan');
   const bs = Object.keys(R.bln).sort();
-  doc.table([{ h: 'Bulan', w: 150 }, { h: 'Material', w: 120, r: 1 }, { h: 'Upah', w: 120, r: 1 }, { h: 'Total', w: 125, r: 1 }],
+  doc.table([{ h: 'Bulan', w: 150 }, { h: 'Material', w: 120, r: 1, col: cM }, { h: 'Upah', w: 120, r: 1, col: cU }, { h: 'Total', w: 125, r: 1 }],
     bs.length ? bs.map(k => [bulan(k), n(R.bln[k].m), n(R.bln[k].u), n(R.bln[k].m + R.bln[k].u)]) : [['Belum ada data', '', '', '']]);
+  const PR = await hitungProgres();
+  doc.heading('Progres bangunan' + (PR.total == null ? '' : ' - ' + Math.round(PR.total) + '%'));
+  const prk = Object.keys(PR.last);
+  Object.keys(R.per).forEach(k => { if ((Number(SET.anggaran[k]) || 0) > 0 && prk.indexOf(k) < 0) prk.push(k); });
+  doc.table([{ h: 'Tahap', w: 140 }, { h: 'Progres', w: 60, r: 1 }, { h: 'Update terakhir', w: 85 }, { h: 'Biaya / anggaran', w: 90, r: 1 }, { h: 'Keterangan terakhir', w: 140 }],
+    prk.length ? prk.map(k => {
+      const pr = PR.last[k], a = Number(SET.anggaran[k]) || 0, t = R.per[k] ? R.per[k].m + R.per[k].u : 0;
+      return [k, pr ? Math.round(pr.persen) + '%' : '0%', pr ? tgl(pr.tanggal) : '-', a ? Math.round(t / a * 100) + '%' : '-', pr ? (pr.judul || '') : ''];
+    }) : [['Belum ada catatan progres', '', '', '', '']]);
   doc.heading('Pembelian per toko');
   const pt = {};
   R.items.forEach(i => {
@@ -1085,7 +1383,7 @@ $('btnPdf').onclick = async () => {
 (async function init() {
   try {
     await DB.open(); await loadSet();
-    $('uKat').innerHTML = optKat(); $('uTgl').value = hariIni(); hitungU(); cekAI(); rekap(); $('promptBox').value = promptNota(true); isiDatalist();
+    $('uKat').innerHTML = optKat(); $('uTgl').value = hariIni(); hitungU(); cekAI(); rekap(); $('promptBox').value = promptNota(true); isiDatalist(); resetPg();
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
   } catch (e) { document.querySelector('main').innerHTML = `<div class="msg bad">Penyimpanan lokal tidak bisa dibuka: ${esc(e.message)}. Jangan gunakan Mode Pribadi (Private Browsing).</div>`; }
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) navigator.serviceWorker.register('sw.js').catch(() => {});
